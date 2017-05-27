@@ -1,0 +1,720 @@
+---
+title: "Lecture 3: t-test by hand, inference, and other things"
+author: "brouwern@gmail.com"
+date: "January 25, 2017"
+output:
+  word_document:
+    fig_width: 8.5
+    fig_height: 6.5
+    fig_caption: true
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE,
+                      cache = TRUE, warnings = FALSE, strip.white = F)
+```
+
+# Topics:
+
+* What is a standard error, really?
+* Sampling Distributions
+* Basic steps in calculating a t-test
+* Null distributions
+* The null distribution of a t-test
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+# The Data
+
+Today we will work with the rat bladder data again.
+
+Motulsky 2nd Ed, Chapter 30, page 220, Table 30.1.  Maximal relaxaction of muscle strips of old and young rat bladders stimualted w/ high concentrations of nonrepinephrine (Frazier et al 2006).  Response variable is %E.max
+
+```{r, echo = F, cache=TRUE}
+#make dataframe with data in 2 sep. columns
+df.rats <- data.frame(old = c(20.8,2.8,50.0,33.3,29.4,38.9, 29.4,52.6,14.3),
+           young = c(45.5,55.0, 60.7, 61.5, 61.1, 65.5,42.9,37.5, NA))
+
+
+```
+
+```{r, echo = F, cache = T,warning=FALSE}
+#make stacked dataframe
+library(reshape2)
+df.rat.stack <- melt(df.rats,
+                     variable.name = "rat.age",
+                     value.name = "percent.E.max")
+
+
+```
+
+```{r, echo = F, cache = T}
+#calcualte means of old and youn rats
+mean.old <- with(df.rats, mean(old))
+mean.young <- with(df.rats, mean(young, na.rm = T))
+
+```
+
+```{r, echo = F, cache = T}
+#put means into a vector
+means.rats <- c(mean.old,mean.young)
+```
+
+
+# Plot Raw data: "beeswarm" vs boxplot
+
+```{r, echo = F, cache = T}
+#2-panel plot
+par(mfrow = c(1,2))
+
+#set plotting limts
+ylim. <- c(0,75)
+
+#make beeswarmplot
+library(beeswarm)
+beeswarm(percent.E.max ~ rat.age, 
+         data = df.rat.stack,
+         ylim = ylim.,
+         col = c(1:2),
+         xlab = "Rat age",
+         ylab = "% Emax",
+         main = "Motulsky Rat Bladder Data")
+
+points(means.rats ~ c(1,2), pch = 3, cex = 2, lwd =5)
+
+#boxplot
+boxplot(percent.E.max ~ rat.age, 
+         data = df.rat.stack,
+        ylab = "",
+        main = "",ylim = ylim.)
+```
+
+* Boxplot are great: lots of info (median, quartiles, min, max)
+* You shouldn't use them when datasets area really small
+* Why? ...
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+# Plot means
+
+```{r, echo = F, cache = T}
+
+
+#2-panel plot
+par(mfrow = c(1,2), mar = c(4,4,4,0.5))
+
+#set plotting limts
+ylim. <- c(0,75)
+
+#make beeswarmplot
+library(beeswarm)
+beeswarm(percent.E.max ~ rat.age, 
+         data = df.rat.stack,
+         ylim = ylim.,
+         col = c(1:2),
+         xlab = "Rat age",
+         ylab = "% Emax",
+         main = "Motulsky Rat Bladder Data")
+
+points(means.rats ~ c(1,2), pch = 3, cex = 1, lwd =5)
+
+library(sciplot)
+with(df.rat.stack,
+     lineplot.CI(x.factor = rat.age,
+                 response = percent.E.max,
+                 ylim = ylim.,
+                 xlab = "Rat age",
+     ylab = ""),
+     )
+legend("bottomright", legend = "Error bars = +/- 1 SE", bty = "n")
+
+
+```
+
+* Does any of the feature of the data stand out?
+
+
+
+# Plot log of data
+
+```{r, echo = F, cache = T}
+
+
+#2-panel plot
+par(mfrow = c(1,2), mar = c(4,4,4,0.5))
+
+#set plotting limts
+ylim. <- c(0,75)
+
+#make beeswarmplot
+library(beeswarm)
+beeswarm(log(percent.E.max) ~ rat.age, 
+         data = df.rat.stack,
+         #ylim = ylim.,
+         col = c(1:2),
+         xlab = "Rat age",
+         ylab = "% Emax",
+         main = "Motulsky Rat Bladder Data")
+
+#points(means.rats ~ c(1,2), pch = 3, cex = 1, lwd =5)
+
+library(sciplot)
+with(df.rat.stack,
+     lineplot.CI(x.factor = rat.age,
+                 response = log(percent.E.max),
+                 #ylim = ylim.,
+                 xlab = "Rat age",
+     ylab = ""),
+     )
+legend("bottomright", legend = "Error bars = +/- 1 SE", bty = "n")
+
+
+```
+
+
+** Comments: **
+
+* Logging DOES NOT fix either issue we are concerned with!
+* Issue 1: normality (not a huge deal)
+* Issue 2: constancy of variation (a big deal!)
+* Issue 2 is dealt with by using the default t-test in R, which is for "non-constant variacnce" (Welch's method)
+
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+# Table of the Raw data
+
+```{r, echo = F, cache=TRUE}
+df.rats
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+# What is a standard error (SE) really?
+```{r}
+par(mfrow = c(1,1))
+with(df.rat.stack,
+     lineplot.CI(x.factor = rat.age,
+                 response = percent.E.max,
+                 #ylim = ylim.,
+                 xlab = "Rat age",
+     ylab = ""),
+     )
+legend("bottomright", legend = "Error bars = +/- 1 SE", bty = "n")
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+# Build up componets for a t-test
+
+## Means
+```{r, echo = F, cache = T}
+#add means to the df
+df.rats2 <- rbind(df.rats, means.rats)
+
+
+```
+
+```{r, echo = F, cache = T}
+#name the row
+row.names(df.rats2)[dim(df.rats2)[1]] <- "means"
+```
+
+```{r, echo = F, cache = T}
+#Plot the table
+round(df.rats2,2)
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Standard deviation
+
+### Equation 
+
+\[\sigma = \sqrt{\frac{\sum\limits_{i=1}^{n} \left(x_{i} - \bar{x}\right)^{2}} {n-1}}\]
+
+* Why do we always square things in statistics?
+
+```{r, echo = F, cache = T}
+#calc sd and add it to the dataframe
+sd.old <- with(df.rats, sd(old))
+sd.young <- with(df.rats, sd(young, na.rm = T))
+sd.rats <- c(sd.old,sd.young)
+df.rats2 <- rbind(df.rats2, sd.rats)
+row.names(df.rats2)[dim(df.rats2)[1]] <- "SD"
+
+round(df.rats2,2)
+
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Sample size
+
+```{r, echo = F, cache = T}
+n.old <- 9
+n.young <- 8
+n.rats <- c(n.old,n.young)
+df.rats2 <- rbind(df.rats2, n.rats)
+row.names(df.rats2)[dim(df.rats2)[1]] <- "N"
+
+round(df.rats2,2)
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Key part of t-test: the difference between the means
+
+### Frequentist methods require a "test stastic"
+
+
+** Main test statistics ** 
+
+* t
+* F
+* chi^2
+
+**What is a test statistic:**
+
+"The **test statistic** is a number calculated from the data that is used to evaluated how compatible the data are with the result expected under the null" (Whitlock & Shulter 2E pg 154)
+
+* The value of the test statistic is compared to a **Null sampling distribution**
+* Extreme values of a test statistic are unlikely to occur if the null hypothesis is true
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+# The t-statistic
+
+## Very general 
+
+\[t = \frac{effect.size}{SE.of.effect.size}\]
+
+* 2-sample t-test
+* paired t-test
+* regression coefficients (slopes)
+
+<br>
+
+## Less general:
+
+\[t = \frac{difference.between.means}{SE.of.difference}\]
+
+* 2-sample t-test
+
+<br>
+
+## Specific:
+\[t = \frac{\bar{x_1}-\bar{x_2}}{SE_d}\]
+
+* 2-sample t-test
+
+<br>
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+  
+  
+  
+  
+# Difference between means
+
+```{r, echo = F, cache = T}
+diff.means <- df.rats2["means",2]-df.rats2["means",1]
+```
+
+```{r, echo = F, cache = T}
+df.rats2 <- rbind(df.rats2, c(diff.means,NA))
+```
+
+```{r, echo = F, cache = T}
+row.names(df.rats2)[dim(df.rats2)[1]] <- "Diff. means"
+
+```
+
+```{r, echo = F, cache = T}
+round(df.rats2,2)
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+  
+
+
+## How do you calculate SE of the difference?
+
+* Pool the variances of each sample
+* Calc. SE of the difference
+
+### Pooled variance
+
+[insert equation here...]
+
+```{r, echo = F, cache = T}
+#Formula for POOLED standard deviation
+
+## Note the formulas squares SD to get variance
+var.pooled <- function(df1,df2,s1,s2){
+  (df1*s1^2 + df2*s2^2)/(df1+df2)
+}
+
+```
+
+```{r, echo = F, cache = T}
+# Calculate pooled variance
+
+## extract N and SD for easy access
+dfs <- df.rats2["N", ]
+SDs <- df.rats2["SD",]
+
+## Apply function for pooled sd
+var.pool <-var.pooled(dfs[1],dfs[2],SDs[1],SDs[2])
+
+## Add to df
+df.rats2["var.pooled",] <- c(var.pool,NA)
+
+
+round(df.rats2, 3)
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+  
+
+
+## Standard error of the difference
+
+\[SE_diff = \sqrt{{s_p^2}(\frac{1}{n_1} + \frac{1}{n_2})} \]
+
+* SE of the difference aka SE of the effect size
+* Weighted by each sample size
+
+```{r, echo = F, cache = T}
+# Standard error of difference
+
+SE.diff <- function(var.pool, n1,n2){
+  sqrt(var.pool*(1/n1 + 1/n2))
+}
+  
+se.dif <- SE.diff(var.pool,dfs[1],dfs[2])  
+  
+
+df.rats2["SE.diff",] <- c(se.dif, NA)
+
+round(df.rats2,3)
+
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+  
+
+## The t-statistic
+
+**Equation**
+\[t = \frac{\bar{x_1}-\bar{x_2}}{SE_d}\]
+
+**Data**
+\[t = \frac{30.167-53.712}{6.657}\]
+
+\[t = \frac{-23.546}{6.657}\]
+
+\[t = 3.537\]
+
+
+
+```{r, echo = F, cache = T}
+#Calcualte t
+
+t.rats <- df.rats2["Diff. means",1]/df.rats2["SE.diff",1]
+
+df.rats2["t", ] <- c(t.rats,NA)
+
+```
+
+```{r, echo = F, cache = T}
+df.rats2["df",1] <- df.rats2["N",1]+df.rats2["N",2]-2
+
+round(df.rats2, 3)
+```
+
+* t = 3.537
+* (actually 3.531488, so I'm a bit off for some reason...)
+
+
+```{r, echo = F, cache = T}
+t.test(df.rats$old, df.rats$young,
+       var.equal = T)$statistic
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+  
+
+
+# How do we get p from this?
+
+## We need a sampling distribution!
+
+"The null distribution is the sampling distribution of outcomes for a test statistics under the assumption that the null hypothesis is true" (Whitlock & Shulter 2E pg 155)
+
+## The null distribution for these data
+
+* Null hypothesis: there is no difference between old and young rats
+* Emax.old - Emax.young = 0
+* Any variation is due to sampling error / noise / etc
+* Null distribution is centered on 0
+
+
+<br><br>
+
+
+## The NULL DISTRIBUTION addresses the question
+
+* If the null hypothesis was indeed true
+* AND you did the study many, many times
+* AND you always did the study with the same sample size
+* THEN, what is the distribution of **test statistics t**
+
+
+<br><br><br>
+
+## The null distribution
+
+```{r, echo = F, cache = T}
+
+#a sequence of probabilities
+x <- seq(0,1,0.00001)
+
+#our degrees of freedom
+df <- df.rats2["df",1]
+
+#t-dist values for each prob. given df
+t.dist <- qt(x , df)
+
+##plot the null dist
+par(mfrow = c(1,1))
+plot.null.dist <- function(ylim. = c(0,250)){
+  hist(t.dist, 
+     main = "Null distribution, df = 15",
+     xlab = "Possible values of t, df = 15",
+     ylim = ylim.)}
+```
+
+## The Null distribution
+```{r, echo = F, cache = T}
+# Plot the density function
+plot(density(t.dist), 
+     xlab = "Probability(t|df = 15)",
+     main = "Null t distribution, df = 15")
+```
+
+## Null distribution w/our t values
+
+```{r, echo = F, cache = T}
+#function to draw arrows
+myarrows <- function(x, y0. = 0.1){
+  arrows(x0  = x, 
+         length = 0.1,
+       x1 = x,
+       y1 = 0,
+       y0 = y0.,
+       col = 2, 
+       lty = 1, 
+       lwd = 3)
+}
+```
+
+### Recall definition of a p-value
+
+* If the null hypothesis is true, the p-value is the probability of obtaining the data you did **or more extreme values**
+
+* That is, obtaining the **test statistic (t-test) you did** or a more extreme one.
+
+
+```{r, echo = F, cache = T}
+# Plot the density function
+plot(density(t.dist), 
+     xlab = "Probability(t|df = 15)",
+     main = "Null t distribution, df = 15")
+myarrows(df.rats2["t",1],y0. = 0.05)
+myarrows(-df.rats2["t",1],y0. = 0.05)
+
+```
+
+
+
+
+```{r, echo = F, cache = T}
+# Plot the density function
+plot(density(t.dist), 
+     xlab = "Probability(t|df = 15)",
+     main = "Null t distribution, df = 15")
+myarrows(df.rats2["t",1],y0. = 0.05)
+myarrows(-df.rats2["t",1],y0. = 0.05)
+text(x = df.rats2["t",1], y = 0.2,
+     "Observed t")
+text(x = -df.rats2["t",1], y = 0.2,
+     "Observed t")
+
+```
+
+
+
+
+
+
+## Null distribution w/our t values AND more extreme values
+
+```{r, echo = F, cache = T}
+# Plot the density function
+plot(density(t.dist), 
+     xlab = "Probability(t|df = 15)",
+     main = "Null t distribution, df = 15")
+myarrows(df.rats2["t",1],y0. = 0.05)
+myarrows(-df.rats2["t",1],y0. = 0.05)
+
+text(x = df.rats2["t",1], y = 0.2,
+     "Observed t")
+text(x = -df.rats2["t",1], y = 0.2,
+     "Observed t")
+
+arrows(x0 = -df.rats2["t",1], x1 = -6,
+       y0 = 0, y1 = 0,
+       col = 2, lwd = 2, length = 0.052)
+
+arrows(x0 = df.rats2["t",1], x1 = 6,
+       y0 = 0, y1 = 0,
+       col = 2, lwd = 2, length = 0.052)
+
+text(x = df.rats2["t",1]+1.75, y = 0.05,
+     "More extreme t")
+text(x =- df.rats2["t",1]-1.75, y = 0.05,
+     "More extreme t")
+
+```
+
+
+
+
+
+
+
+
+
+
+## Zoom in on area under curve
+
+```{r, cache = T}
+plot(density(t.dist), 
+     ylim = c(0,0.00354321),
+     xlim = c(-5,-3.25),
+     lwd = 3,
+     main = "Curve beyond our t",
+     xlab = "")
+abline(v = -df.rats2["t",1], col = 2, lty = 2, lwd = 3)
+arrows(x0 = -df.rats2["t",1], x1 = -6,
+       y0 = 0, y1 = 0,
+       col = 2, lwd = 2, length = 0.052)
+
+```
+
+
+```{r, echo = F, cache = T}
+t.test(df.rats$old, df.rats$young,
+       var.equal = T)$p.value
+```
+
+
+* OUr p value is ~0.03
+* What is the **area under this curve?**
+
+
+
+
+## Both tails of the curve
+
+
+```{r, echo = F,cache = T}
+par(mfrow = c(1,2))
+plot(density(t.dist), 
+     ylim = c(0,0.00354321),
+     xlim = c(-5,-3.25),
+     lwd = 3,
+     main = "Left tail",
+     xlab = "")
+abline(v = -df.rats2["t",1], col = 2, lty = 2, lwd = 3)
+arrows(x0 = -df.rats2["t",1], x1 = -6,
+       y0 = 0, y1 = 0,
+       col = 2, lwd = 2, length = 0.052)
+
+plot(density(t.dist), 
+     ylim = c(0,0.00354321),
+     xlim = c(3.25,5),
+     lwd = 3,
+     main = "Right tail",
+     xlab = "",ylab = "")
+abline(v = df.rats2["t",1], col = 2, lty = 2, lwd = 3)
+arrows(x0 = df.rats2["t",1], x1 = 6,
+       y0 = 0, y1 = 0,
+       col = 2, lwd = 2, length = 0.052)
+
+```
+
+
+
+<br><br><br><br><br>
+
+## Both tails of the curve
+
+
+```{r, echo = F, cache = T}
+par(mfrow = c(1,2))
+plot(density(t.dist), 
+     ylim = c(0,0.00354321),
+     xlim = c(-5,-3.25),
+     lwd = 3,
+     main = "Left tail = 0.015",
+     xlab = "")
+abline(v = -df.rats2["t",1], col = 2, lty = 2, lwd = 3)
+arrows(x0 = -df.rats2["t",1], x1 = -6,
+       y0 = 0, y1 = 0,
+       col = 2, lwd = 2, length = 0.052)
+
+plot(density(t.dist), 
+     ylim = c(0,0.00354321),
+     xlim = c(3.25,5),
+     lwd = 3,
+     main = "Right tail = 0.015",
+     xlab = "",ylab = "")
+abline(v = df.rats2["t",1], col = 2, lty = 2, lwd = 3)
+arrows(x0 = df.rats2["t",1], x1 = 6,
+       y0 = 0, y1 = 0,
+       col = 2, lwd = 2, length = 0.052)
+
+```
+
+
+# Quotes:
+
+"The **sampling distribution** is the probability distribution of all values for an estiamte that we might obtain when we sample a population"
+
+"The **test statistic** is a number calculated from the data that is used to evaluated how compatible the data are with the result expected under the null" (Whitlock & Shulter 2E pg 154)
+
+"The **null distribution*** is the sampling distribution of outcomes for a test statistics under the assumption that the null hypothesis is true" (Whitlock & Shulter 2E pg 155)
+
+" The P-value is the probability of obtaining the data (or data showing as great or great difference from the null hypothesis) if the null hypothesis were true" (Whitlock & Shulter 2E pg 157)
+
+"The **significance level alpha** is the probablity used as a criterion for rejecting the null hypothesis.  If the p-value is less than or equal to alpha, then the null hypothesis is rejected.  If the p value is greater than alapha, then the null is *not* rejected" (Whitlock & Shulter 2E pg 159)
+
+"**Type I error** is rejeting a true null hypothesis.  The significance level alpha sets the probability of committing a Type I error." (Whitlock & Shulter 2E pg 160)
+
+"**Type II error** is failing to reject a false null hypothesis" (Whitlock & Shulter 2E pg 160)
+
+"The **power of a test** is the probability that a random sample will lead to rejection of a false null hypothesis" (Whitlock & Shulter 2E pg 161)

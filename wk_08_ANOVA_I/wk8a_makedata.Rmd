@@ -1,0 +1,283 @@
+---
+title: "Intro To ANOVA 1: Make random data"
+author: "brouwern@gmail.com"
+date: "March 1, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+fw <- 1
+```
+
+# An Introduction to ANOVA
+
+* Krywinski & Altman (2014) present an analysis simulated data 
+* We'll use their parameters to carry out a similar analysis
+
+Reference: Krywinski & Altman (2014).  Designing comparative experiments.  Nature Methods 11:597-8.
+
+
+# Outline
+
+* Define parameters for data simulation
+* Generate random data
+* Organize data into dataframe
+
+
+
+
+
+# The hypothetical study
+
+* Experimental study of cells fluorescing after treatment
+* Control (no treatment)
+* Treatment A
+* Treatment B
+* each treatment has n = 17 indepndent samples.  
+
+
+<br>
+
+
+# Basic parameters for simulation:
+
+Data are defined by the following parameters
+
+* control = Background rate of fluorescence of cells
+    + = "mu", the Greek letter for "m"; looks like a "u"
+* change in fluoresence due to treatments A and B
+* Variability in fluorescence (random variation, "noise"")
+
+
+
+
+
+
+
+## Means
+
+### Mean of control
+
+The overall baseline or background rate of fluroescence
+
+```{r mu}
+mu <- 10   #control
+```
+
+
+### Treatment effects
+
+How much the treatments ("trt") cause the samples to diverge or differ from means
+
+```{r effects}
+#d is for "difference"
+dA <- 0.6  #trt A effect
+dB <- 1    #trt B effect
+```
+
+### Treatment means
+
+* ie Mean of treatment A 
+    + = (background) + (treatment B effect)
+    + = (control)    + dB
+    + = mu + dB
+    
+```{r all.means}
+muC <- mu      #control
+muA <- mu + dA #trt A
+muB <- mu + dB #trt B
+```
+
+
+## Variablity around mean
+
+Variation around mean is assumed to be normally distributed with a constant variance
+
+```{r}
+s  <- 1 #standard deviation
+```
+
+
+## Sample Size
+
+```{r}
+n <- 17
+```
+
+
+
+# Generating random data
+
+* rnorm() function in R
+* 3 arguments:
+    + n = number of replications 
+    + mean
+    + sd = standard deviation
+
+
+## Generate random data
+
+```{r rnorm}
+#generate random control data
+dataC <- rnorm(n = n, 
+               mean = muC,
+               sd = s)
+
+```
+
+
+## Visualize random data
+
+We'll use ggplot
+
+* ggplot2:qplot
+    + geom = "histogram"
+    + no "y = "
+    + won't work: "qplot(y = dataC, geom = "histogram")"
+    
+```{r, message=F, warning=F, fig.width = 3}
+library(ggplot2)
+library(cowplot)
+
+qplot(dataC,
+      geom = "histogram")
+```
+
+
+
+
+## Random data for other treatments
+```{r}
+#data for treatment A
+dataA <- rnorm(n = n, 
+               mean = muA,
+               sd = s)
+
+
+#data for treatment B
+dataB <- rnorm(n = n, 
+               mean = muB,
+               sd = s)
+```
+
+
+
+
+
+
+# Dataframe
+
+* Put data into a dataframe using data.frame()
+* Must be in "stacked" format
+    + All y variables in a single column
+    + 2nd column with indicator of the treatment
+* I will use the rep() function to help with this
+
+## Put all y variables into single vector
+```{r}
+y.column <- c(dataA,
+              dataC, 
+              dataB)
+
+#check length
+length(y.column)
+
+```
+
+
+## Make the 1st treatment vector
+
+Reapt the letter "A" n = 17 times
+
+```{r, include=FALSE}
+#letter designating the treatment
+vectorA <- rep("A",n)
+
+#This is same as this
+## (Don't have to to this!)
+vectorA <- c("A","A","A","A","A",
+             "A","A","A","A","A",
+             "A","A","A","A","A",
+             "A","A")
+
+
+#Check the length
+length(vectorA)
+```
+
+
+
+## The the other vectors
+```{r}
+#Make other vectors
+## rep C for control
+vectorC <- rep("C",n)
+
+## rep B for treatment B
+vectorB <- rep("B",n)
+
+
+```
+
+
+Put all of the treatment vectors into 1 vector that will become the "treatment" column of our dataframe
+
+```{r}
+trt.column <- c(vectorA,
+                vectorC,
+                vectorB)
+```
+
+
+
+## Make dataframe
+
+Dataframe with 2 columns
+
+* fluoro = y variable (respones variable)
+* treatment = indicator of treatment group (A,B, C)
+
+```{r}
+dat <- data.frame(fluoro = y.column,
+                  treatment = trt.column)
+```
+
+
+To save space when we print results, round the fluoro variable
+```{r}
+dat$fluoro <- round(dat$fluoro, 
+                    digits = 2)
+```
+
+
+Look at dataframe
+
+```{r}
+head(dat)
+```
+
+
+Summary of dataframe
+
+```{r}
+summary(dat)
+```
+
+
+## Summary statistics by group
+
+* doBy package
+* summarBy() function
+* FUN = what function to use
+* FUN = c(mean,sd) applies both functions at the sample time
+
+```{r}
+library(doBy)
+
+
+summaryBy(fluoro ~ treatment, 
+          data = dat, 
+          FUN = c(mean,sd))
+```
+

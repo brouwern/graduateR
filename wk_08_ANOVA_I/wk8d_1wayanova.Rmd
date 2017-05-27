@@ -1,0 +1,211 @@
+---
+title: "Intro To ANOVA 4: 1-way ANOVA"
+author: "brouwern@gmail.com"
+date: "March 2, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Data
+```{r}
+y.column <- c(	11.24329808,	10.57397347,	8.798111146,	9.648373069,	10.16202242
+,	9.253887088,	11.51807329,	12.22480837,	8.797802989,	10.6733833,	12.38641145,	10.55536801,	10.83550408,	9.473762458,	11.8490472,	11.52501837,	10.02532039,	10.26283115,	9.541543832,	10.8289181,	10.61879171,	10.56255483,	10.12447501,	11.27377454,	8.985686839,	9.661441062,	9.337572633,	9.624627193,	9.562961301,	8.898324866,	9.033531311,	12.00679606,	10.80340919,	10.72436056,	10.39465146,	10.29051717,	11.32943119,	11.95522121
+,	12.59729367,	10.49891019,	9.58186603,	10.83069437,	9.639272696,	11.23721842,	10.25767478,	10.83731922,	10.46711202,	10.6520578,	11.90867276,	12.38906162,	11.33769377)
+
+
+#create stacked dataframe
+n<-17
+dat <- data.frame(fluoro = y.column,
+                  treatment = c(rep("A",n),rep("C",n),rep("B",n)))
+
+#set factor levels
+dat$treatment <- factor(dat$treatment ,
+                        levels = c("A","C","B"))
+```
+
+
+# Plotting Function
+
+```{r}
+easy.ggplot.ci <- function(dat, y, x, mult = 1){
+  ggplot(data = dat, 
+       aes(y = dat[,y], 
+           x = dat[,x])) + 
+stat_summary(fun.data = "mean_se",
+             fun.args = list(mult = mult)) +
+    xlab(x)+ylab(y)
+}
+```
+
+
+# 1-way ANOVA in R
+
+
+## Fit null model
+
+* ANOVA, t-test, regression are all linear models
+* ~1 means "fit the mean"
+
+```{r}
+model.null <- lm(fluoro ~ 1, 
+             data = dat)
+```
+
+
+
+Look at output
+```{r}
+summary(model.null)
+```
+
+
+The (Intercept) is the same as the grand mean of the data.  Check this with summary.
+
+```{r}
+summary(dat)
+```
+
+
+
+
+## Fit alt model linear model
+
+
+```{r}
+model1 <- lm(fluoro ~ treatment, 
+             data = dat)
+```
+
+
+## Look at summary
+
+* to save space I will use an alternative command "display"
+* from arm package
+
+```{r}
+library(arm)
+display(model1, detail = TRUE)
+```
+
+
+## Compare summary to plot
+
+* treatment A serves as baseline
+* treatment C is lower than A
+    + so treatmenttreatment.C  is negative (-)
+* treatment B is higher than A
+    + so treatmenttreatment.B is positive (+)
+* p values for treatmenttreatment.C and treatmenttreatment.B should match t-tests
+    + check out p.table object
+
+
+```{r,fig.width = 5}
+library(ggplot2)
+easy.ggplot.ci(dat = dat, 
+         y = "fluoro",
+         x = "treatment",
+         mult = 1.96)
+```
+
+
+# "Re-parameterize"" model
+
+* This is sometiems useful, but it NOT used for hypothesis testing!
+* ... ~ -1 + ... "Drops" the intercept
+* we now get the means of each group
+* QUESTION: how do we interpret the small p-values?
+
+```{r}
+model.means <- lm(fluoro ~ -1 + treatment, 
+             data = dat)
+
+display(model.means, detail = T)
+```
+
+
+
+# ANOVA by model comparison
+
+* the anova() command compares 1 models
+
+Run a model comparison on model.null and model1
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+anova(model.null, 
+      model1)
+```
+
+This is how I like to think of things: in terms of comparing the fit of 2 models
+
+
+
+# ANOVA by "partitioning the variance"
+
+* You can do this too, and will see some people do this.
+* Almost exactly the same output, just different format for underlying numbers
+
+```{r}
+anova(model1)
+```
+
+
+Calcualte F
+```{r}
+treatment.MS <- anova(model1)$"Mean Sq"[1]
+resid.MS <- anova(model1)$"Mean Sq"[2]
+
+treatment.MS/resid.MS
+```
+
+
+
+
+
+# And you might see this sometiems to
+
+* aov() command instead of lm()
+* this has a few different features that are useful down the road
+
+```{r}
+#use aov() to fit model
+m.aov <- aov(fluoro ~ treatment, 
+             data = dat)
+
+summary(m.aov)
+```
+
+
+
+# What does this p-value mean?
+
+* All of these p values are the same
+* They mean that at least mean value of the 3 treatments is diffrent from the other
+* But doesn't say which one!
+* We might right in a paper "There were significant differences among treatments (F = 11.23, p = 0.0002)"

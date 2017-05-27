@@ -1,0 +1,561 @@
+---
+title: "Duq Biostats Week 6 | Regression Tutorial 5: Functions"
+author: "brouwern@gmail.com"
+date: "February 13, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Functions in R
+
+A simple function to calculate the standard SE
+
+## Standard error
+
+### Equation
+\[SE = \frac{SD}{\sqrt{N}}\]
+
+<br>
+
+### R-ish notation
+\[SE = \frac{SD(x)}{sqrt(length(x))}\]
+
+
+
+
+## Calcualte SE by hand
+
+Make some fake data
+```{r}
+fake.data <- rnorm(n = 100,mean = 0,sd = 1)
+```
+
+<br>
+
+Calc SE
+```{r}
+sd(fake.data)/sqrt(length(fake.data))
+```
+
+<br>
+
+# A function that does these calculation
+
+First I'll make a function that breaks the steps up 
+```{r}
+
+SE.function <- function(x){ 
+      
+      #Calcualte the SD
+      sd.x <- sd(x)
+      
+      #sample size
+      length.x <- length(x)
+      
+      #sqrt of sample size
+      sqrt.length <- sqrt(length.x)
+      
+      #calculate the SE
+      SE <- sd.x/sqrt.length
+      
+      #return teh S
+      return(SE)
+       }
+
+
+
+```
+
+```{r}
+SE.function(fake.data)
+```
+
+<br><br>
+
+This function does the same thing directly
+
+```{r}
+
+SE.function <- function(x){ sd(x)/sqrt(length(x)) }
+
+```
+
+
+<br><br>
+
+## Test the function
+
+
+```{r}
+
+(fake.data)
+
+```
+
+<br>
+
+Compare to a real function
+```{r}
+
+library(plotrix)
+
+```
+
+<br>
+
+Check 
+```{r}
+std.error(fake.data)
+```
+
+How exact is my function?
+
+```{r}
+std.error(fake.data) == SE.function(fake.data)
+```
+
+<br><br>
+
+# Problem: My function will choke if there's an NA.
+
+
+Make the first entry in the vector NA
+```{r}
+fake.data[1] <- NA
+```
+
+<br>
+
+Check
+```{r}
+std.error(fake.data)
+SE.function(fake.data)
+```
+
+<br>
+
+
+This is b/c the sd function doesnt like NAs
+```{r}
+sd(fake.data)
+```
+
+<br>
+
+I'll fix the function by add "na.rm = TRUE" to the function
+
+```{r}
+
+SE.function <- function(x){sd(x, na.rm = T)/sqrt(length(x))}
+
+```
+
+<br><br>
+
+Now it doesn't choke, but it gives the wrong asnwer
+
+```{r}
+#correct
+std.error(fake.data)
+
+#mine
+SE.function(fake.data)
+```
+
+<br>
+
+This is b/c the length() data gives the totally length of the vector, including any NAs
+
+```{r}
+length(fake.data)
+```
+
+<br>
+
+length() doesn't have an arugement related to NAs.  So I need to remove them first before I do the calculations.  I'll use the na.omit() function to do this
+
+```{r}
+SE.function2 <- function(x){
+  # remove NAs
+  x2 <- na.omit(x)
+  
+  # calcualte
+  sd(x2)/sqrt(length(x2))}
+```
+
+<br>
+
+
+Check the results
+```{r}
+std.error(fake.data)
+SE.function2(fake.data)
+```
+
+<br><br><br>
+
+# A more complex function
+
+Writing lots of plotting code can be a drag in R.  I'll make a function that can speed this up.
+
+## Regression model
+
+Normally to plot a regression line we'd do something like this
+
+Load milk data
+```{r}
+setwd("C:/Users/lisanjie2/Desktop/TEACHING/1_STATS_CalU/1_STAT_CalU_2016_by_NLB/1_STAT_Duq_2017/HOMEWORK/Duq_Biostats_Homework_4_Milk_regression/homework4_RMD_vs2")
+dat2 <- read.csv("milk_subset.csv")
+```
+
+<br>
+
+```{r}
+#the the model
+model. <-lm(fat.log10 ~ mass.log10, data = dat2)
+
+#plot the raw dat
+plot(fat.log10 ~ mass.log10, data = dat2)
+
+#plot regression line
+abline(model., col = 2)
+
+```
+
+
+<br><br>
+
+We can make a function the simplifies this a bit
+```{r}
+plot.my.mod <- function(mod){
+  
+  #extract formula from model
+  model.formula <- formula(mod)
+  
+  #plot the raw dat
+  plot( model.formula , data = dat2)
+  
+  #plot regression line
+  abline(mod, col = 2)
+
+}
+```
+
+
+<br>
+
+Test it
+```{r}
+plot.my.mod(model.)
+```
+
+<br>
+
+
+I'd like to be able to change the colors of the regression line on the fly
+
+* add "..." to the function() code
+
+```{r}
+plot.my.mod <- function(mod, ...){
+  
+  #extract formula from model
+  model.formula <- formula(mod)
+  
+  #plot the raw dat
+  plot( model.formula , data = dat2)
+  
+  #plot regression line
+  abline(mod, ...)
+
+}
+```
+
+<br><br>
+
+Test it
+```{r}
+plot.my.mod(model., col = 3)
+```
+
+
+<br>
+
+I can change the line type of the regression line now too
+```{r}
+plot.my.mod(model., col = 3, lty = 2)
+```
+
+<br>
+
+# A more complex situation
+
+
+* Build a model with a continuous and categorical predictor.  
+* This model defines two parralell lines, one for aquatic species, one for terrestrial species.
+
+Build the model
+```{r}
+model.2 <-lm(fat.log10 ~ mass.log10 + 
+               biome, 
+             data = dat2)
+
+
+summary(model.2)
+```
+
+
+**Question**
+What are the equations for these two lines?
+
+
+<br><br><br>
+
+My function won't work properly on model output this b/c it uses the abline() function, which does't work w/ complex regression models
+
+```{r}
+plot.my.mod(model.2, col = 3, lty = 2)
+```
+
+<br>
+
+
+## A function to plot models with two predictors
+
+In a files called "fnxn_plot_intxns.R"  I have a function that can plot this model properly.  I will load this function using source()
+
+```{r}
+source("fnxn_plot_ANCOVA.R")
+```
+
+<br>
+
+* The function is called plot.ANCOVA()
+* As written this function will not work if you did the log transformations "on the fly!"
+    * MUSt have transformation "hard coded" as a seperate column
+
+```{r}
+plot.ANCOVA(model.2)
+```
+
+
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+# Code for the plot.ANCOVA()
+
+```{r}
+
+
+#makes interaction plot of simple regression
+#models w/1 numeric and 1 categorical predictor
+
+
+
+#makes interaction plot of simple regression
+#models w/1 numeric and 1 categorical predictor
+
+
+plot.ANCOVA <- function(model,
+                        raw.data = NULL,
+                        x.axis = NULL,
+                        cols = c(1,2)){
+  
+  #Data
+  ##extract data used in model
+  dat <- model$model
+  
+  ##if x.axis arguement contains data, add to dataframe
+  if(is.character(x.axis) == TRUE){
+    dim.orig <- dim(dat)[2]
+    dat <- cbind(dat,raw.data[,x.axis])
+    names(dat)[-c(1:dim.orig)] <-  x.axis
+  }
+  
+  
+  
+  #extract formula from model object
+  ##get formula
+  form <- as.character(formula(model))[-1]
+  
+  ##split into vector
+  model.terms <- strsplit(form[2],"[\\+\\*]")
+  
+  ##name list returned by strsplit()
+  names(model.terms) <- "x.names"
+  
+  ##get rid of spaces
+  model.terms$x.names <- gsub(" ","" ,model.terms$x.names)
+  
+  ##count number of parameters
+  i.terms <- length(model.terms$x.names)
+  
+  #create new entry in list (this will be overwritten)
+  model.terms$x.types <- model.terms$x.names
+  
+  #Loop over each term in the model to determine
+  ##whether it is categorical or continous
+  for(i in 1:i.terms){
+    term.i <- model.terms$x.names[i]
+    
+    if(any(strsplit(term.i,"")[[1]] == "*") == TRUE){
+      model.terms$x.types[i] <- "interactions"
+      next
+    }
+    
+    
+    model.terms$x.types[i] <- ifelse(is.numeric(dat[,term.i]) == TRUE, 
+                                     "numeric",
+                                     "categorical")
+  }
+  
+  
+  
+  ## y axis
+  model.terms$y <- form[1]
+  
+  
+  
+ 
+  
+  #Define continous variable
+  ## If the model doesn't contain a continuous, 
+  ## get it from x.axis arguement
+  if(is.null(x.axis)== FALSE){
+    x.cont <- x.axis
+  }
+  
+  ##If model contains a continous variable...
+  if(is.null(x.axis)== TRUE){
+    i.num <- which(model.terms$x.types == "numeric")
+    x.cont <- model.terms$x.names[i.num]
+    
+  }
+
+  
+  #Define categorical variable
+  i.cat <- which(model.terms$x.types == "categorical")
+  x.cat <- model.terms$x.names[i.cat]
+  
+  if(length(x.cat) > 1){
+    x.cat <- x.cat[1]
+    
+  }
+  
+  
+  #Define y variable
+  y <- model.terms$y
+  
+  
+
+  
+  # range of observed numeric data
+  ## if calling from dataframe
+  if(is.character(x.cont) == TRUE){
+    rng <- range(dat[,x.cont])
+    
+  }
+  
+  ## if calling from x.var arguement
+  if(is.numeric(x.cont) == TRUE){
+    rng <- range(x.cont)
+    
+  }
+  
+  ## levels of the categorical variable
+  levs <- levels(dat[,x.cat])
+  
+  
+  ## generate new data with expand.grid() 
+  newdat <- expand.grid(x.cont = rng,
+                        x.cat = levs)
+  
+
+  ## label columns
+
+  #if calling from x.axis
+  if(is.numeric(x.cont) == TRUE){
+    names(newdat) <- c("x.axis", x.cat)
+    
+  }
+ 
+  #if calling from model datat
+  if(is.character(x.cont) == TRUE){
+    names(newdat) <- c(x.cont, x.cat)
+    
+  }
+  
+  # generate predictions from fitted model
+  newdat$yhat <- predict(model,newdat)
+  
+  #determine baseline level of fitted model
+  i.lev1 <- which(dat[,x.cat] == levs[1])
+  
+  #determine range of values
+  ## range of observed x values
+  #if calling from x.axis
+  if(is.numeric(x.cont) == TRUE){
+    xlims <- range(x.cont)
+    
+    
+  }
+  
+  #if calling from model datat
+  if(is.character(x.cont) == TRUE){
+    xlims <- range(dat[,x.cont])
+    
+    
+  }
+  
+ 
+  
+  
+  
+  ## range of observed y values
+  ylims <- range(dat[,y])
+  
+  
+  #Plot raw data
+  ## Plot level 1 of model (intercept)
+  plot(dat[i.lev1,y] ~ dat[i.lev1,x.cont], 
+       xlab = x.cont,
+       ylab = y,
+       xlim = xlims,
+       ylim = ylims,col=cols[1])
+  
+  ## Plot level 2 of model (intercept+effect)
+  points(dat[-i.lev1,y] ~ dat[-i.lev1,x.cont], 
+         xlab = x.cont,
+         ylab = y,
+         col = cols[2])
+  
+  
+  #Plot regession lines
+  ##subset data for regression lines
+  i.lev1 <- newdat[,x.cat] == levs[1]
+  i.lev2 <- newdat[,x.cat] == levs[2]
+  
+  ##plot regression lines
+  points(newdat$yhat ~ newdat[,x.cont], 
+         subset = i.lev1,
+         col = cols[1],
+         type = "l")
+  
+  points(newdat$yhat ~ newdat[,x.cont], 
+         subset = i.lev2,
+         col = cols[2],
+         type = "l")
+  
+  
+}
+
+
+
+
+
+```
+

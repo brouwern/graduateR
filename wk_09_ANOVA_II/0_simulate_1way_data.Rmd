@@ -1,0 +1,41 @@
+---
+title: "Script to simulate 1-way data"
+author: "brouwern@gmail.com"
+date: "March 16, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+n <- 10
+Cs <- rep("Control",n)
+TAs <- rep("Drug.A",n)
+TBs <- rep("Drug.B",n)
+trt.cat <- c(Cs, TAs,TBs)
+
+baseline <- 10
+trt.effect.A <- 5
+trt.effect.B <- 10
+
+betas <- c(baseline, 
+           trt.effect.A,
+           trt.effect.B)
+
+n.tot <- length(trt.cat)
+resp.cont <- model.matrix(~trt.cat)%*%betas + rnorm(n.tot,0,5)
+
+dat.1.way.ANOVA <- data.frame(resp.cont,Treatment = trt.cat)
+
+```
+
+
+
+```{r}
+write.csv(dat.1.way.ANOVA, 
+          file = "simulated_1way_data.csv",
+          row.names = F)
+```
+

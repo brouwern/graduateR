@@ -1,0 +1,257 @@
+---
+title: "Poisson regression with rat marble data"
+author: "brouwern@gmail.com"
+date: "April 11, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Load data
+
+```{r}
+marbles <- read.csv("Lazic_weight_marbles.csv")
+```
+
+
+
+# Poisson regression
+
+## Overall mean
+
+### Raw mean 
+
+Just take the overall mean of the raw data
+```{r}
+#with mean()
+mean(marbles$marbles)
+
+
+#with summaryBy()
+library(doBy)
+summaryBy(marbles ~ 1, 
+          data = marbles)
+
+```
+
+
+### Raw mean via lm()
+
+A linear model with just an intercept gives you the mean.  The "(Intercept)" column of the summary output is the same as given about by mean() and summaryBy().
+
+```{r}
+
+lm.mean <- lm(marbles ~ 1, 
+          data = marbles)
+
+
+summary(lm.mean)
+```
+
+
+### Raw mean via glm
+
+Default family for glm() is "gaussian", so glm() is the same as lm() unless you specify something else (ie family = "poisson")
+
+```{r}
+glm.mean <- glm(marbles ~ 1, 
+          data = marbles)
+
+summary(glm.mean)
+```
+
+
+### A poisson model of the mean
+
+First, the model
+```{r}
+
+glm.pois.mean <- glm(marbles ~ 1, 
+          data = marbles,
+          family = poisson(link = "log"))
+
+
+```
+
+The output
+```{r}
+summary(glm.pois.mean)
+```
+
+* Note that "(Intercept)" =  1.23214
+* WTF?
+
+This is the mean on the log scale (technically natural log ln).  We can revert from the log scale to the original scale by exponentiating this value (ie, the anit-log of ln is exp)
+
+```{r}
+
+exp(1.23214)
+
+```
+
+
+Without hardcoding it would be this, using coef() to get the Intercept value
+```{r}
+
+exp(1.23214)
+exp(coef(glm.p.mean))
+
+```
+
+
+Conversly, we can take the mean from our lm/glm we did above and ln() it 
+```{r}
+log(coef(glm.mean))
+```
+
+
+
+
+Standard errors: exp of mean + Se
+```{r}
+
+exp(1.23214 + 0.07715)
+exp(1.23214 - 0.07715)
+
+
+```
+
+
+# For slide:
+See what happens when you increase SD
+
+(This is not well annotated, sorr)
+```{r}
+#A factor to increase the E by
+se.mod <- 6
+se <- 0.07715
+
+#dataframe of original and modifed Se
+df <- data.frame(mean = exp(1.23214), 
+                 value = c("Observed SE\n(0.08)", 
+                           "Larger SE\n(0.2)"),
+                 SE.minus = c(exp(1.23214-se),
+                              exp(1.23214-se*se.mod)),
+                 SE.plus = c(exp(1.23214+se),
+                           exp(1.23214+se*se.mod)))
+
+
+df$value <- relevel(df$value,ref = "Observed SE\n(0.08)")
+
+
+qplot(y = mean,
+      x = value,
+      data = df) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = SE.minus,
+                    ymax = SE.plus),
+                width = 0) 
+
+```
+
+
+
+
+
+### Who cares?
+
+One reason to care is that an inapproiate model assuming normality can result in bad confidence intervals.
+
+Confidence intervals from model assuming normality (gaussian)
+```{r}
+confint(lm.mean)
+```
+
+
+Confidence intervals from poisson model
+```{r}
+confint(glm.p.mean)
+```
+
+These are odd because they are on long scale
+
+
+```{r}
+exp(confint(glm.p.mean))
+```
+
+
+Compare them side by side: 
+```{r}
+rbind(normal = confint(lm.mean),
+           poisson = exp(confint(glm.p.mean)))
+```
+
+
+CIs for poisson are smaller! With the lm() model our estimate of the mean is less precise. (We will revise this appraisal later when we talk about the topic of "overdispersion")
+
+
+
+## Poisson regression: Modeling treatment effects 
+
+
+First, the model
+```{r}
+
+summaryBy(marbles ~ sex, 
+                    data = marbles)
+
+
+lm.sex <- lm(marbles ~ sex, 
+                       data = marbles)
+
+
+
+summary(lm.sex)
+
+
+#sex as a predictor
+glm.pois.sex <- glm(marbles ~ sex, 
+          data = marbles,
+          family = poisson)
+
+#sex as predictor, dropping intercept
+glm.pois.sex.dropint <- glm(marbles ~ -1 + sex, 
+          data = marbles,
+          family = poisson)
+
+
+```
+
+The output
+```{r}
+coef(lm.pois.sex)
+2.708333+1.411667 
+
+#the ratio
+log((2.708333+1.411667)/(2.708333))
+
+
+coef(glm.pois.sex)
+
+coef(glm.pois.sex.dropint)
+
+
+exp(0.9963334 + 0.4195197 )
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

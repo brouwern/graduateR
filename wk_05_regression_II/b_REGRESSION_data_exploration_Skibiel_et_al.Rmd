@@ -1,0 +1,445 @@
+---
+title: "Regression Data Exploration: Skibiel et al 2013 milk data"
+author: "brouwern@gmail.com"
+date: "February 1, 2017"
+output:
+  word_document:
+    reference_docx: rmarkdown_template.docx
+    fig_width: 9
+    fig_height: 5
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, strip.white = FALSE, cache = TRUE)
+```
+
+
+
+# Introduction to Regression Modeling
+
+<br>
+
+# Data for today: comparative zology of milk
+## How does milk compositon vary with animal life history & biology?
+
+**Skibiel et al 2013.**  Journal of Animal Ecology.  The evolution of the nutrient composition of mammalian milks.
+
+* Table S1. Milk composition of mammals at mid-lactation
+* Table S2. Ecology and life histories of mammals whose milk composition has been described
+
+<br>
+
+# The milk dataset
+
+* Focus on % of fat in milk
+* Several "continous predictors" / covariates
+    + mass of female = mass.female 
+    + duration of pregnancy/gestation = gest.month.NUM    
+    + how long young fed = lacat.mo.NUM     
+    + how big are babies = mass.litter         
+* Several "categorical predictors"
+    + diet = meat, plants, everything
+    + arid = desert or other
+    + biome = aquatic or terrestrial (includes bats)
+
+```{r, echo = F, display = F}
+#Data cleaned in 1_REGRESSIOn_data_cleaning_Skibiel_et_al...
+milk2 <- read.csv(file = "./Skibiel_clean_milk_focal_column.csv")
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+# Look at data
+    
+```{r}
+# Hom much data?
+dim(milk2)
+
+#focal columns
+##(use negative indexing to drop some)
+summary(milk2[,-c(2,3,8,9)])
+```
+
+
+
+## Focal families in dataset
+
+* Artiodactyla = 23; Even-toed ungulate
+* Carnivora = 23
+* Primates = 22
+* Rodentia = 17
+* Chiroptera = 10; bats
+* Diprotodontia = 10; marsupials
+* Cetacea = 6
+* Perrissodactyla = 7; odd-toed ungulates
+* Lagomorpha = 3
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+
+# Explore milk data with ggplot2
+
+* ggplot2::qplot is an excellent function for rapid data exploration
+* different synatax than R's "base" plot functions
+* (another R plotting system is "trellis")
+
+## Look at % milk fat vs. mass of female
+
+* Plot is dominated by whales!
+```{r gg1, echo = F}
+library(ggplot2)
+
+#set font
+theme_set(theme_bw(base_size = 18))
+
+qplot(y = fat.percent,
+      x = mass.female,
+      data = milk2,
+      main = "Regression data: continous vs continuous",
+      xlab = "Continous x: mass of female",
+      ylab = "Continous y: mass of female") 
+```
+
+```{r gg1, eval = F}
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Look at % milk fat vs. log(mass of female)
+
+* Logging helps
+* NOTE: statiticians typically use natural log = ln()
+* Biologists, especially when allometry is invovled, typically use base 10 = log10()
+* Original authors used log10, but I just realized this, so I'll stick with ln()
+* I believe (?) give similar answers, but log10 I think (?) makes biological interpretation easier (???)
+
+```{r, echo = F}
+library(ggplot2)
+
+qplot(y = fat.percent,
+      x = log(mass.female),
+      data = milk2,
+            main = "Regression data: continous vs log(continuous)",
+      xlab = "Continous x: log(mass of female)",
+      ylab = "Continous y: mass of female")
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+## Compare log10
+
+* Looks very similar
+
+```{r, echo = F}
+library(ggplot2)
+
+qplot(y = fat.percent,
+      x = log10(mass.female),
+      data = milk2,
+            main = "Regression data: continous vs log(continuous)",
+      xlab = "Continous x: log(mass of female)",
+      ylab = "Continous y: mass of female")
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+## Add "smoother"
+
+* "geom = c("point","smooth")"
+* Multiple types of smoothers 
+    + loess 
+    + spline 
+    + GAM
+
+```{r, gg.with.smoother, echo = F}
+qplot(y = fat.percent,
+      x = log(mass.female),
+      geom = c("point","smooth"),
+      data = milk2,
+            main = "Regression data: continous vs log(continuous)",
+      xlab = "Continous x: log(mass of female)",
+      ylab = "Continous y: mass of female")
+```
+
+```{r gg.with.smoother, eval = F}
+```
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+## Look at % milk fat by a categorical variable (diet)
+
+```{r, echo = F}
+qplot(y = fat.percent,
+      x = diet,
+      data = milk2)
+
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+## Look at % milk fat by diet AND biome
+
+* "facets" are a powerful tool in ggplot
+* Turns out ALL of our aquatic spp are carnivores (sorry, no manatees)
+* This shows that "aquatic" and "diet" are "Confounded"
+```{r}
+library(ggplot2)
+
+qplot(y = fat.percent,
+      x = diet,
+      data = milk2,
+      facets = ~ biome)
+
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Look at % milk fat by diet AND biome, colored by body mass
+
+* The color scale is DOMINATED by a whale
+```{r, echo = F}
+library(ggplot2)
+
+qplot(y = fat.percent,
+      x = diet,
+      data = milk2,
+      color = mass.female,
+      size = 2,
+      facets = ~ biome)
+
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## ...Look at % milk fat by diet AND biome, colored by log(body mass)
+
+* logging should equalize things
+
+```{r, echo = F}
+library(ggplot2)
+
+qplot(y = fat.percent,
+      x = diet,
+      data = milk2,
+      color = log(mass.female),
+      size = 2,
+      facets = ~ biome)
+
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+## Change to boxplot using "geoms"
+```{r, echo = F}
+library(ggplot2)
+
+qplot(y = fat.percent,
+      x = diet,
+      data = milk2,
+      geom = c("boxplot"),
+      color = log(mass.female),
+      facets = ~ biome)
+
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+# Overlay raw data on boxplots
+
+* geom = c("boxplot", "point")
+```{r, echo = F}
+library(ggplot2)
+
+qplot(y = fat.percent,
+      x = diet,
+      data = milk2,
+      geom = c("boxplot", "point"),
+      color = log(mass.female),
+      facets = ~ biome)
+
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+# Focal data subset: Primates & Relatives
+
+* Primates
+* Rodents (this is why we use mouse models)
+* Rabbits
+
+<br>
+
+## Subset data
+
+This is a fairly fancy subsetting
+* Note use of with()
+* which()
+* %in%
+
+```{r}
+#Select subset
+i.use <- with(milk2, which(order %in% c("Rodentia",
+                                        "Primates",
+                                        "Lagomorpha")))
+#make subset using row indexing
+milk3 <- milk2[i.use,]
+
+write.csv(milk3, file = "Skibiel_clean_milk_focal_genera.csv")
+```
+
+Compare original data and our working subset
+
+* Original = 130 speices
+* Working data = 42
+
+```{r}
+# Original data
+dim(milk2)
+
+#out sowkring subset
+dim(milk3)
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+# Plot working data: 
+## milk fat.percent ~ female size
+
+
+```{r, echo = F}
+library(ggplot2)
+
+qplot(y = fat.percent,
+      x = mass.female,
+      data = milk3) 
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+## The big animal is a Gorrilla!
+```{r, echo = F}
+library(ggplot2)
+milk3$spp.focal <- ""
+i.focal <- c(17,18,19,23,30,34,39)
+
+milk3$spp.focal[i.focal] <- as.character(milk3$spp[i.focal])
+qplot(y = fat.percent,
+      x = mass.female,
+      data = milk3) + geom_text(aes(label=spp.focal),hjust=1, vjust=0)
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+# Plot logged data
+## milk fat.percent ~ log(female size)
+
+```{r, echo = F}
+qplot(y = fat.percent,
+      x = log(mass.female),
+      xlim = c(2,13),
+      data = milk3)+ geom_text(aes(label=spp.focal),hjust=0, vjust=0)
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Add smoother
+
+% Fat generally declines as body mass increases
+```{r, echo = F}
+qplot(y = fat.percent,
+      x = log(mass.female),
+      data = milk3,
+      geom = c("point","smooth"))
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Add regression line
+
+* % Fat generally declines as body mass increases
+* Grey areas is "confidence band"
+* ggplot makes these really easily
+* harder using plot()
+
+```{r, echo = F}
+qplot(y = fat.percent,
+      x = log(mass.female),
+      data = milk3,
+      geom = c("point")) +
+  geom_smooth(method = "lm")
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+# Alternate predictor: Duration of gestation
+## fat.percent ~ log(gest.month.NUM)
+
+* % Fat generally declines as gestation duration increases
+* (the longer animal is pregnant, the less fatty the milk is)
+* longer pregnancy, lower milk fat
+
+```{r, echo = F}
+qplot(y = fat.percent,
+      x = log(gest.month.NUM),
+      data = milk3,
+      geom = c("point")) +
+  geom_smooth(method = "lm")
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+# Duration of lactation
+## fat.percent ~ log(lacat.mo.NUM)
+
+* % Fat generally declines as lactation duration increases
+* longer time kids are dependent, lower milk fat
+
+```{r, echo = F}
+qplot(y = fat.percent,
+      x = log(lacat.mo.NUM),
+      data = milk3,
+      geom = c("point")) +
+  geom_smooth(method = "lm")
+```
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+# Mass of litter
+## fat.percent ~ log(mass.litter)
+
+* % Fat generally declines as litter size  increases
+* more or bigger babies, less milk fat
+
+```{r, echo = F}
+qplot(y = fat.percent,
+      x = log(mass.litter),
+      data = milk3,
+      geom = c("point")) +
+  geom_smooth(method = "lm")
+```
+
+

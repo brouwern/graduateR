@@ -1,0 +1,174 @@
+---
+title: "Regression Data cleaning: Skibiel et al 2013 milk data"
+author: "brouwern@gmail.com"
+date: "January 30, 2017"
+output:
+  word_document:
+    reference_docx: rmarkdown_template.docx
+    fig_width: 9
+    fig_height: 5
+    fig_caption: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, strip.white = FALSE, cache = TRUE)
+```
+
+
+# Data: milk
+
+Skibiel et al 2013.  Journal of Animal Ecology.  The evolution of the nutrient composition of mammalian milks.
+
+* Table S1. Milk composition of mammals at mid-lactation
+* Table S2. Ecology and life histories of mammals whose milk composition has been described
+
+<br>
+
+
+
+# The milk dataset
+
+* Focus on % of fat in milk
+* Several "continous predictors" / covariates
+    + mass of female = mass.female 
+    + duration of pregnancy/gestation = gest.month.NUM    
+    + how long young fed = lacat.mo.NUM     
+    + how big are babies = mass.litter         
+* Several "categorical predictors"
+    + diet = meat, plants, everything
+    + arid = desert or other
+    + biome = aquatic or terrestrial (includes bats)
+
+## Data prep
+
+### Load data
+
+See script for cleaning info
+```{r}
+#Original Table S1 and S2 merged by hand
+
+#set wd()
+
+# Load merged data 
+milk <-read.csv("./milk.csv",stringsAsFactors = FALSE, 
+                na.strings = c("NA"))
+
+# Get rid of spaces between each row
+milk <-na.omit(milk)
+
+# Save temp file
+write.csv(milk, "milk_temp.csv",row.names = F)
+
+#reload
+milk <- read.csv("milk_temp.csv",
+                 stringsAsFactors = FALSE, 
+                 na.strings = c("NA","-",""))
+
+
+```
+
+<br>
+
+
+### Clean data
+
+* need to clean up some letters used as annotations in the original data
+
+```{r}
+# Remove "*" from fat
+milk$fat <- gsub("\\*","",milk$fat)
+milk$fat <- as.numeric(milk$fat)
+
+
+#remove letters from gestation month
+milk$gestation.month <-   gsub("[a-zA-Z ]","",milk$gestation.month)
+milk$gestation.month <-   gsub("[ ]","",milk$gestation.month)
+
+milk$gest.month.NUM <- as.numeric(milk$gestation.month)
+
+
+
+
+
+milk$lacatation.months <-   gsub("[a-zA-Z ]","",milk$lacatation.months)
+
+milk$lacatation.months[which(milk$lacatation.months == "7:00")] <- 7
+
+milk$lacat.mo.NUM <- as.numeric(milk$lacatation.months)
+
+
+
+milk$mass.litter <-   gsub("[,a-zA-Z ]","",milk$mass.litter)
+milk$mass.litter <- as.numeric(milk$mass.litter)
+
+#"Reproductive output was estimated by dividing total litter #mass by maternal mass. Total litter mass was calculated by #multiplying neonate mass by litter size."
+
+milk$diet <- factor(milk$diet)
+
+
+
+milk$biome <- gsub(" ","",milk$biome)
+summary(factor(milk$biome ))
+milk$biome <- factor(milk$biome)
+
+milk$arid <- factor(milk$arid)
+
+
+milk$family <- factor(milk$family)
+milk$order <- factor(milk$order)
+milk$spp <- factor(milk$spp)
+
+
+```
+
+
+Save focal data
+```{r}
+write.csv(milk, file = "Skibiel_clean_milk.csv",row.names = F)
+```
+
+
+<br>
+
+
+### Subset focal columns to use
+
+#### Focal columns
+```{r}
+cols.use <- c("order",
+              "family",
+              "spp",
+              "mass.female",
+"gest.month.NUM",
+"lacat.mo.NUM",
+"mass.litter",
+"repro.output",
+"dev.stage.at.birth",
+"diet",
+"arid",
+"biome",
+"fat")
+```
+
+<br>
+
+#### Subset data
+
+Use column indexing by column name
+```{r}
+milk2 <- milk[,cols.use]
+```
+
+Change column names to "fat.percent"
+```{r}
+i.x <- which(names(milk2) == "fat")
+names(milk2)[i.x] <- "fat.percent"
+```
+
+
+Save data subset
+```{r}
+write.csv(milk2,file = "Skibiel_clean_milk_focal_column.csv",row.names = F )
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>

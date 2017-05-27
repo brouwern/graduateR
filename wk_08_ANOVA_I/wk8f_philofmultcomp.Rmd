@@ -1,0 +1,148 @@
+---
+title: 'Intro To ANOVA 6: Multiple comparisons philosophies'
+author: "brouwern@gmail.com"
+date: "March 2, 2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Different philosophies on multiple planned comparisons
+
+## 0)Bayesian
+
+* They don't (usually) care 
+* Gelman et al.  2007.  Why we (usually) don't worry about multiple comparisons
+* The [related blog](http://andrewgelman.com/2008/03/20/why_i_dont_usua_1/)
+* But also see [In one of life's horrible ironies, I wrote a paper "Why we (usually) don't have to worry about multiple comparisons" but now I spend lots of time worrying about multiple comparisons](http://andrewgelman.com/2014/10/14/one-lifes-horrible-ironies-wrote-paper-usually-dont-worry-multiple-comparisons-now-spend-lots-time-worrying-multiple-comparisons/)
+* Gelman & Loken. The garden of forking paths: Why multiple comparisons can be a problem, even when there is no "fishing expedition" or "p-hacking" and the research hypothesis was posited ahead of time
+
+<br>
+
+## 0) No corrections
+
+* In some fields, "planned comparisons" are considered "ok"
+    + multiple comparisons used to prevent data dredging
+    + if comparisons planned before analysis, you aren't data dredging
+    + may or may not do an ANOVA F-test 1st (see below)
+    
+<br><br>
+
+## 1)"Omnibus" ANOVA F-tests, followed by uncorrected t-tests
+
+**OVERALL FLOW:**
+
+* 1st, "omnibus" ANOVA F-test  
+    + aka "global" ANOVA, global F-test
+* 2nd, pairwise t-tests using the pooled variance
+* If F-test is non-significant, STOP - don't continue
+
+<br>
+
+**NOTES**
+
+* Goes back (kinda) to RA Fisher 
+    + (Sometimes referred to as "Fisher's protected LSD")
+    + ( but this term is used in various imprecise ways.)
+* When you only have 3 treatments, this keeps alpha at the set level
+* w/ more than 3 treatments,  rapidly becomes a very liberal test (alpha goes up up up)
+* There is evidence that stopping with a non-significant F test is too conservative
+    
+<br><br>   
+    
+## 2)Omnibus ANOVA followed by corrected t-tests
+
+* Omnibus ANOVA followed by corrected t-tests
+  + Bonferonni, etc
+* If you have 3 treatments, this is conservative and unnecessary 
+    + (that is, you're being too hard on yourself)
+* If you follow up with TukeyHSD, this is conservative and unnecessary
+* For >3 treatments, probably still too conservative
+
+<br><br>
+    
+## 3) TukeyHSD only
+
+* Don't do ANOVA, just use TukeyHSD
+* This is what TukeyHSD was designed for
+* NOTE: TukeyHSD is only for all pairwise comparisons
+
+<br>
+
+## 4) Other correction only
+
+* Don't do ANOVA, just use method X
+* Often how the method was designed
+* Double check though!
+
+<br><br><br><br><br><br>
+
+# Beyond "planned" and "un-planned" comaprisons into "The garden of forking paths"
+
+## Classic multiple comparisons problem
+* p-values lose their literal meaning if you do "data dredging"
+* If you keep doing test till you get p<0.05, your alpha isn't actually 0.05
+* If you keep tweaking your dataset till you get p<0.05...
+    + trying different transformations, removing outliers
+
+<br>
+
+## New problem: "research degress of freedom" and "forking paths"
+
+### The chocies we face
+* Most data requires some basic processing
+    + log transform
+* Sometimes it requires additional process
+    + outlier removing
+* Not every research would process that same dataset the same way
+    + I like ln, other like log10, some sqrt
+    + Reasonable People might view outliers differently
+    
+<br>    
+    
+### Implication of these choices
+* These choices impact your p-value
+* These are the "forking paths" of even the most honest data analysis
+* "p-hackers" 
+    + explore these paths methodically to get p<0.05
+    + utilize multiple "research degrees of freedom" to get p<0.05 
+    
+<br>
+
+### The big problem
+
+* According to Gelman, the mere EXISTENCE of these paths invalidates p-values
+* WHAT!?!?!
+
+<br>
+
+
+
+### Imagine this:
+
+* You give your data for you independent project to me
+* We both analyze it w/o talking to each other
+* You process the data, analyze it: p = 0.01
+    + p < 0.05, publish, graduate, awesome!
+    + If the null were indeed true, the probability of getting data yielding results as or more extreme = 0.01.
+* I process and analyze your data slightly differently.  p = 0.19
+    + sorry :(
+    
+<br>    
+    
+### How to interpret the difference
+
+When there are multiple ways to go from data to p-value, its meaning changes
+
+* p = "if the null were true, the prob of getting data yielding as or more extreme results USING THE EXACT SAME DATA PROCESS SETS."
+* but data processing steps can depend
+    + on who is doing the processing steps (you vs. me)
+    + on the data themselves (due to random chance, data from the same experiment could be skewed or not skewed)
+* how then to understand p?
+
+
+

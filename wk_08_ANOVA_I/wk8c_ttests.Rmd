@@ -1,0 +1,379 @@
+---
+title: "Intro To ANOVA 3: t-tests"
+author: "brouwern@gmail.com"
+date: "March 2, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Make data that matches Nature Methods Paper
+
+```{r}
+y.column <- c(	11.24329808,	10.57397347,	8.798111146,	9.648373069,	10.16202242
+,	9.253887088,	11.51807329,	12.22480837,	8.797802989,	10.6733833,	12.38641145,	10.55536801,	10.83550408,	9.473762458,	11.8490472,	11.52501837,	10.02532039,	10.26283115,	9.541543832,	10.8289181,	10.61879171,	10.56255483,	10.12447501,	11.27377454,	8.985686839,	9.661441062,	9.337572633,	9.624627193,	9.562961301,	8.898324866,	9.033531311,	12.00679606,	10.80340919,	10.72436056,	10.39465146,	10.29051717,	11.32943119,	11.95522121
+,	12.59729367,	10.49891019,	9.58186603,	10.83069437,	9.639272696,	11.23721842,	10.25767478,	10.83731922,	10.46711202,	10.6520578,	11.90867276,	12.38906162,	11.33769377)
+
+
+#create stacked dataframe
+n<-17
+dat <- data.frame(fluoro = y.column,
+                  treatment = c(rep("A",n),rep("C",n),rep("B",n)))
+
+#set factor levels
+dat$treatment <- factor(dat$treatment ,
+                        levels = c("A","C","B"))
+```
+
+
+# Outline
+
+* Create indicies that define subsets of the data
+    + using %in%
+* Do t-tests on subsets of data
+
+
+## Creating subsets
+
+* This can be done several ways
+* I will do it using indexing
+* subset() command also works well
+
+
+### Isolate "A" and "C" treatment
+
+
+#### Slow way: using which() twice
+
+3 steps: 
+
+* locate As indices
+* locate Cs 
+* combine indices
+
+```{r}
+#Which rows are treatment.A in?
+i.A <- which(dat$treatment == "treatment.A")
+
+#Look at the index
+i.A
+```
+
+#### Use the index using "row indexing"
+
+* Put index into square brackets [ , ]
+* [rows, columns]
+* [i.A, ] = "give me the rows that match i.A", and all columns
+
+
+```{r}
+dat[i.A, ]
+```
+
+
+We can do this and get just the summary info on A
+```{r}
+summary(dat[i.A, ])
+```
+
+
+
+What if I want just the "fluoro" column?
+
+```{r}
+dat[i.A, "fluoro"]
+```
+
+
+This can be confusing, but the previous code is equivalent to
+
+```{r, eval=FALSE, include=FALSE}
+dat$fluor[i.A]
+```
+
+
+### Now get the controls
+
+How do we isolate the indices for "treatment.C"?
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+i.C <- which(dat$treatment == "treatment.C")
+```
+
+
+### Put As and Cs together
+
+How do we put the i.A and i.C vector together into a single vector of indices (call it i.AC)?
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+i.AC <- c(i.A, i.C)
+```
+
+### Summary info on A and C
+```{r}
+summary(dat[i.AC, ])
+```
+
+
+# Fast way to get these indices: %in%
+
+* "which items in $treatment" match the 2 valeus %in% the vector c("A","C") "
+
+```{r}
+i.AC <- which(dat$treatment %in% c("A","C"))
+```
+
+
+
+Call summary() using this new index i.AC
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+summary(dat[i.AC, ])
+```
+
+
+
+
+
+# Make indices for other items
+
+* i.AB
+* i.BC
+
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+i.AB <- which(dat$treatment %in% c("A","B"))
+
+i.BC <- which(dat$treatment %in% c("B","C"))
+```
+
+
+
+
+
+
+
+
+
+# T-tests
+
+## Treatment A vs. treatment C
+
+Run the t-test
+```{r}
+t.test.AvsC <- t.test(fluoro ~ treatment, 
+       dat = dat,
+       subset = i.AC)
+```
+
+
+Call up the output
+
+```{r}
+t.test.AvsC
+```
+
+
+## T test on the other combinations
+```{r}
+t.test.AvsB <- t.test(fluoro ~ treatment, 
+       dat = dat,
+       subset = i.AB)
+
+
+
+
+t.test.BvsC <- t.test(fluoro ~ treatment, 
+       dat = dat,
+       subset = i.BC)
+
+
+```
+
+
+## p values for each one
+```{r}
+pAvsB <- t.test.AvsB$p.value
+pAvsC <- t.test.AvsC$p.value
+pBvsC <- t.test.BvsC$p.value
+
+pAvsB
+pAvsC
+pBvsC
+```
+
+## Make a table to hold the p values
+
+Put all of the p values into a vector called "p.valeus"
+```{r}
+# p.values <- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+p.values <- c(pAvsB,
+              pAvsC,
+              pBvsC)
+```
+
+
+
+
+Make a vector that holds the names of the comparisons
+```{r}
+#comparison <- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+comparison <- c("AvsB","AvsC","BvsC")
+```
+
+
+Make a dataframe
+```{r}
+p.table <- data.frame(comparison = comparison,
+                      p = p.values)
+
+p.table
+```
+
+
+Round the p values
+
+```{r}
+#p.table$p <-
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#do the rounding
+p.table$p <- round(p.table$p,3)
+
+#look at the table
+p.table
+```
+
+
+

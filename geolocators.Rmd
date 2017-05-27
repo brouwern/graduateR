@@ -1,0 +1,473 @@
+---
+title: "RE-analysis of Raybuck et al 2017 geolocator data"
+author: "NA"
+date: "May 5, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Sample sizes in original paper
+
+### 2014: 24 total
+* Geolocator-PA: 10 
+* Control-PA: 14
+
+### 2015: 77 total
+* Geolocator-PA:    19
+* Geolocator-Ozark: 20
+* Control-PA:    18
+* COntrol-Ozark: 20
+
+```{r}
+19+20+18+20 #77 in 2015
+```
+
+Total: 101
+```{r}
+10 + 14 + 19+20+18+20
+```
+
+Total geolocators: 49
+```{r}
+10+19+20
+```
+
+
+Total Contrls:52
+```{r}
+14+18+20
+```
+
+
+Total geolocators PA: 29
+```{r}
+10+19
+```
+
+Total controls PA: 32
+```{r}
+14+18
+```
+
+
+
+## 2014-2015 return rates, when "phi" harness was used
+
+### Chi2 test 2014-2015 RR
+
+* Geolocators: 1 of 10 returned
+* Controls: 7 of 14
+
+
+#### Set up data matrix with 2014-2015 data
+```{r}
+#matrix
+mat.14.15 <-matrix(c(7,9,
+                     7,1),
+                   nrow = 2,
+                   byrow = T)
+
+#total sample size
+sum(mat.14.15)
+```
+
+#### CHi2 test on 2014-2015 data
+
+
+Chi2 test with no "continuity correction"; this is what Streby report in his MS and yields the same p values and chi2 statistics.  
+```{r}
+chsq1 <- chisq.test(mat.14.15,
+                    correct = F)
+
+chsq1
+```
+
+R issues a warning with this test b/c there is only 1 observation in one of the cells.  Chi2 tests only work properly when the "expected" number of observations in each cell is >5 (it is often thought that it only works properly when the observed number is >5, but this is not true).  For this dataset, th cell with 1 observation (the 1 bird with a geolocator that lived) results in an expected frequency of 3.33, thus the error.
+
+When can see the expected frequencies here:
+
+```{r}
+chsq1$expected
+```
+
+
+R's deafult is to use "Yate's continuity correction"; I forget what this does, but do know that there is debate about its usefulness.  It does not mitigate the fact that there is an expected frequency <5 so R issues a warning.
+```{r}
+#yates correction
+chisq.test(mat.14.15)
+```
+
+R can calculate the chi2 test via simulation; I don't know the details, but this appears to alleviate the problem with the low counts.   p > 0.05.
+```{r}
+#p values via simulation
+chisq.test(mat.14.15,
+           simulate.p.value = T)
+```
+
+
+Often when expected frequencies are low, Fisher's exact test is recomended. It is thought to be conservative.  It produces a p value > 0.05.
+```{r}
+#fisher's exact test
+fisher.test(mat.14.15)
+
+```
+
+See the link below for recommendation to use Fisher's exact test when counts are low.
+http://www.theanalysisfactor.com/observed-values-less-than-5-in-a-chi-square-test-no-biggie/
+
+
+Another approach that is very similar is a G-test, which is featured prominently in Gotelli and Ellisons Primer of Ecological Statistics.
+
+#### Logistic regression on 2014-2015 data
+
+An alternative to a chi2 test and its relative is logistic regression, which involves fitting a model via maximum likelihood.  We can set the data up as "binomial GLM"
+
+Make the data
+```{r}
+return    <- c(1,7)
+no.return <- c(9,7)
+group <- c("geo","cntrl")
+total <- return+no.return
+method <- c("phi","cntrl")
+```
+
+Build a null model w/ only an intercept and a modle with a "group" effect for the geolocators.
+```{r}
+#null model
+m14.0 <- glm(cbind(return, no.return) ~ 1, family = binomial)
+
+#"group" (geolocator) model
+m14.grp <- glm(cbind(return, no.return) ~ group, family = binomial)
+
+```
+
+There is a confusing array of p-values for a GLM.  
+
+* The Rao method yields the same results as a chi2 test w/o continuity correction (therefore the same as in the Streby MS).  I believe this is not a preferred method
+* The likelihood ratio test (LRT)/Chisq test are equivalent, are preferred, and yield a slightly lower p value of 0.03
+
+```{r}
+anova(m14.0,m14.grp, test = "Rao")
+anova(m14.0,m14.grp, test = "LRT")
+anova(m14.0,m14.grp, test = "Chisq")
+```
+
+
+There are many many limitations of just looking at p-values.  Let's look at effect sizes and confidence intervals by re-parameterizing the model.  This formulation, which "drops the intercept", can be used to calcualte the surival probabilites and their confidence itnervals
+```{r}
+m14.mean <- glm(cbind(return, no.return) ~ -1 + group,
+                family = binomial)
+
+```
+
+
+Get confidence intervals on probability scale
+```{r}
+library(arm)
+
+#mean survival rates
+invlogit(coef(m14.mean))
+
+#confidence intervals
+invlogit(confint(m14.mean))
+```
+
+Because the same size is so small confidence intervals are huge.  For the control group, the 95% CI extends from a reasonable if a bit low 0.25 to an unreasonable 0.74.  For the geolocator group, the 95% CI goes from 0.37, not unheard of among warblers, to 0.005.  
+
+
+Plot it
+```{r}
+library(ggplot2)
+y.14 <- invlogit(coef(m14.mean))
+x <- c("control","geo")
+CI.lo.14 <- invlogit(confint(m14.mean))[,1]
+CI.hi.14 <- invlogit(confint(m14.mean))[,2]
+
+qplot(y = y.14,
+      x = x) +
+  geom_errorbar(aes(ymin = CI.lo.14,
+                    ymax = CI.hi.14),
+                width = 0)
+```
+
+
+### Upshot for 2014-2015 data with phi harness
+
+* Most ways you can formulate this test you get a p-value around 0.05.
+* THe method in the Streby MS is not ideal because of the low counts; a better method produces a lower p-value
+* With such a low sample size, however, the likelihood of spurious results is very high.
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Chi2 test on 2015-2016 dataset
+
+* Geolocators: 7 of 39 survived (32 died)
+* Controls: 11 of 38 survived (27 died)
+
+```{r}
+mat.15.16 <-matrix(c(27,32,
+                     11, 7),
+             nrow = 2,byrow = T)
+
+sum(mat.15.16) #N = 77
+
+```
+
+
+Chi2 done by Streby
+```{r}
+#no correction
+chisq.test(mat.15.16,
+           correct = F)
+```
+
+
+Other variations; all have large p-valeus
+```{r}
+#yates correction
+chisq.test(mat.15.16,correct = T)
+
+#p values via simulation
+chisq.test(mat.15.16,simulate.p.value = T)
+
+#fisher's exact test
+fisher.test(mat.15.16)
+
+```
+
+Set data up for a GLM
+```{r}
+group <- c("geo","cntrl")
+return.15.16 <- c(7,11)
+no.return.15.16 <- c(32,27)
+total.15.16 <- return+no.return
+method <- c("phi","cntrl")
+
+m.15.0 <- glm(cbind(return.15.16, no.return.15.16) ~ 1, family = binomial)
+m.15.grp <- glm(cbind(return.15.16, no.return.15.16) ~ group, family = binomial)
+anova(m.15.0,m.15.grp, test = "Chisq")
+```
+
+Means
+```{r}
+m.15.means <- glm(cbind(return.15.16, no.return.15.16) ~-1+  group, family = binomial)
+
+invlogit(coef(m.15.means))
+invlogit(confint(m.15.means))
+
+
+```
+
+
+
+```{r}
+library(ggplot2)
+y.15 <- invlogit(coef(m.15.means))
+x <- c("control","geo")
+CI.lo.15 <- invlogit(confint(m.15.means))[,1]
+CI.hi.15 <- invlogit(confint(m.15.means))[,2]
+
+qplot(y = y.15,
+      x = x) +
+  geom_errorbar(aes(ymin = CI.lo.15,
+                    ymax = CI.hi.15),
+                width = 0)
+```
+
+
+
+
+```{r}
+y <- c(y.14,y.15)
+x <- c("control-yr1","geolocator-yr1",
+       "control-yr2","geolocator-yr2")
+CI.lo <- c(CI.lo.14,CI.lo.15)
+CI.hi <- c(CI.hi.14,CI.hi.15)
+
+df <- data.frame(y,x,CI.lo, CI.hi)
+df$x <- factor(df$x,
+               levels = x)
+qplot(y = y,
+      x = x,
+      data = df) +
+  geom_errorbar(aes(ymin = CI.lo,
+                    ymax = CI.hi),
+                width = 0) +
+  geom_vline(xintercept = 2.5)
+```
+
+
+
+
+
+
+
+
+
+## Chi2 test on full dataset
+
+* THis analysis ingores confounding effects, year effects etc
+* All p-values near 0.05 as reported by Streby
+```{r}
+mat.all <-matrix(c(34,41,18,8),nrow = 2,byrow = T)
+
+chisq.test(mat.all,correct = F)
+chisq.test(mat.all,correct = T)
+chisq.test(mat.all,simulate.p.value = T)
+fisher.test(mat.all)
+
+```
+
+
+
+## Year effect
+
+Look at just control data to test for a year effect.  p = 0.16
+```{r}
+year <- c(2014,2015)
+group <- c("cntrl","cntrl")
+return.C <- c(7,11)
+no.return.C <- c(7,27)
+total <- return.C+no.return.C
+
+m.yr.C <- glm(cbind(return.C,no.return.C) ~ factor(year), family = binomial)
+
+summary(m.yr.C)
+```
+
+
+
+Look at means and confidence interval.  While the difference between survival rates is not nominally significant I'd say there is soke evidence that survival the 2nd year of the study was at least a little bit lower than the 1st year.
+
+```{r}
+m.yr.C.means <- glm(cbind(return.C,no.return.C) ~-1 + factor(year), family = binomial)
+
+invlogit(coef(m.yr.C.means))
+invlogit(confint(m.yr.C.means))
+
+```
+
+
+
+
+
+
+
+# Set data up for a GLM-all data
+
+```{r}
+year.all <- c(2014,2014,2015,2015)
+group.all <- c("geo","cntrl","geo","cntrl")
+return.all <- c(1,7,7,11)
+no.return.all <- c(9,7,32,27)
+total.all <- return.all+no.return.all
+method <- c("phi","cntrl","Streby","cntrl")
+
+```
+
+
+
+
+```{r}
+m.all.0 <- glm(cbind(return.all,no.return.all) ~ 1, 
+            family = binomial)
+
+m.all.yr <- glm(cbind(return.all,no.return.all) ~ year, 
+            family = binomial)
+
+
+m.all.grp <- glm(cbind(return,no.return) ~ group, 
+            family = binomial)
+
+m.all.yr.grp <- glm(cbind(return,no.return) ~ year + group, 
+            family = binomial)
+
+m.all.yrXgrp <- glm(cbind(return,no.return) ~ year*group, 
+            family = binomial)
+
+
+m.method <- glm(cbind(return,no.return) ~ method, 
+            family = binomial)
+
+```
+
+AIC
+```{r}
+library(bbmle)
+ICtab(m.all.0,m.all.yr,m.all.grp,m.all.yr.grp,m.all.yrXgrp,m.method,type = "AIC",base = T,logLik = T)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+year <- c(2014,2014,2015,2015)
+group <- c("geo","cntrl","geo","cntrl")
+
+means.link <- c(predict(m14.grp,type = "link",se.fit = T)$fit
+,predict(m.15.grp,type = "link",se.fit = T)$fit)
+
+ses.link <- c(predict(m.15.grp,type = "link",se.fit = T)$se.fit
+,predict(m.15.grp,type = "link",se.fit = T)$se.fit)
+
+df <- data.frame(year,group,means.link,ses.link)
+
+df$mean <- invlogit(df$means.link)
+df$CI.lo <- invlogit(df$means.link - 1.96*df$ses.link)
+df$CI.hi <- invlogit(df$means.link + 1.96*df$ses.link)
+df$year.group <-with(df,paste(year,group))
+qplot(y = mean,
+      x = year.group,
+      geom = "point",
+      data = df) +
+  geom_errorbar(aes(ymin = CI.lo,ymax = CI.hi),
+                width = 0) +
+  geom_vline(xintercept = 2.5) +
+  ylim(0,0.7)
+
+```
+
+
+
+# Power
+
+```{r}
+library(pwr)
+?pwr.chisq.test
+prob<-matrix(c(c(0.35*25)/100,c(0.2*25)/100,
+               c(0.65*25)/100,c(0.8*25)/100),
+         nrow=2,byrow=TRUE)
+prob
+ES.w2(prob)
+
+
+pwr.chisq.test(w = ES.w2(prob),
+               #power = 0.80,
+               N = sum(c(39,38)),
+               sig.level=0.05, df = 1)
+
+```
+

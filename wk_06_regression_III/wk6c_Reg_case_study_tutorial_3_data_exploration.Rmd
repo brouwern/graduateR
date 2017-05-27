@@ -1,0 +1,291 @@
+---
+title: 'Duq Biostats Week 6 | Regression Tutorial 3: Data exploration with ggplot'
+author: "brouwern@gmail.com"
+date: "February 12, 2017"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+  word_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data exploration with ggplot
+
+## Set working directory
+```{r}
+setwd("C:/Users/lisanjie2/Desktop/TEACHING/1_STATS_CalU/1_STAT_CalU_2016_by_NLB/1_STAT_Duq_2017/HOMEWORK/Duq_Biostats_Homework_4_Milk_regression/homework4_RMD_vs2")
+```
+
+## Load cleaned data
+
+Load data cleaned in previous tutorial
+```{r}
+dat <- read.csv(file = "Skibiel_clean2_milk.csv")
+```
+
+
+# Add the Australia information again
+
+In the PCA tutorial we determined that mammals from Australia are outliers in some respects.  We'll make a new column to indicate which species these are.
+
+```{r}
+i.weirdos <- which(dat$order %in% c("Monotremata"  #monotremes
+,"Diprotodontia"  #marsupials
+,"Didelphimorphia"#opossums
+,"Dasyuromorphia"#tasmanian devil)
+,"Peramelemorphia" #bandicoots
+)) 
+
+dat$Australia <- "other"
+
+dat$Australia[i.weirdos] <- "Australia"
+```
+
+
+# Subset data for further analyses
+
+* We won't need all of the columns for our regression analysis, so I'll subset it using "column indexing"
+* I'll make an "index" object (i.columns) to hold the names of the columns I want to use
+* I'll use that index in a set of square brackets to subset the data
+    + "dat[ , i.columns]"
+    
+
+
+### Define columns of interest
+```{r}
+i.columns <- c("fat",
+               "protein.num",
+               "sugar.num",
+               "energy.num",
+               "mass.female",
+               "gestation.month",
+               "lacatation.months", 
+               "mass.litter",
+               "repro.output",
+               "dev.stage.at.birth",
+               "diet","arid",
+               "biome",
+               "Australia",
+               "order",
+               "family",
+               "spp")
+```
+
+### Subset data using column names
+```{r}
+dat2 <- dat[ , i.columns]
+```
+
+
+
+### Look at subset
+```{r}
+dim(dat2)
+summary(dat2)
+```
+
+
+
+# Data exploration in ggplot2
+
+* Our focal response (y) variable will "fat", the percentage of fat in each species of mammal's milk
+* We'll use female body size to take a look at the data
+
+
+
+## Plot raw data in base graphics
+
+```{r}
+#plot(fat ~ mass.female, data = dat2)
+```
+
+
+
+## Plot raw data in ggplot
+
+* We'll use the ggplot function qplot()
+* Note that ggplot does NOT use R's formula notation
+
+```{r}
+library(ggplot2)
+qplot(y = fat,
+      x = mass.female, 
+      data = dat2)
+```
+
+
+## Log transform x variable
+
+The whales really throw off the x-axis!
+
+```{r}
+qplot(y = fat,
+      x = log10(mass.female), 
+      data = dat2)
+```
+
+
+
+## Log transform x and y variable
+
+* Authors state that "All continuous variables were log10-transformed prior to analysis."
+* Log10 transformation is common in biology in general, and especialy when things like body size are being considered.
+
+```{r}
+qplot(y = log10(fat),
+      x = log10(mass.female), 
+      data = dat2)
+```
+
+
+## Log transform x, logit transform y variable
+
+* The data are percentages and therefore the logit is a more appropriate transformation
+* The car package has a logit() command
+    + car::logit() can accept proportions ([0,1]) or percentages ([0,100])
+    + the fat data are percentages so we use the arguement "percents = TRUE""
+
+```{r}
+library(car)
+
+qplot(y = logit(fat, percents = T),
+      x = log10(mass.female), 
+      data = dat2)
+```
+
+
+
+
+# Hard code transformation
+
+To make code cleaner make new columns with the transformed data
+
+```{r}
+#x variable fat
+## The authors' transformation of the
+dat2$fat.log10 <- log10(dat2$fat)
+
+## The logit transformation
+dat2$fat.logit <-logit(dat2$fat, percents = T)
+  
+#y variable female mass  
+dat2$mass.log10 <- log10(dat2$mass.female)
+```
+
+
+
+
+# Colors
+
+```{r}
+library(car)
+
+qplot(y = fat.log10,
+      x = mass.log10, 
+      data = dat2,
+      color = Australia)
+```
+
+
+# Shape
+
+```{r}
+library(car)
+
+qplot(y = fat.log10,
+      x = mass.log10, 
+      data = dat2,
+      shape = diet)
+```
+
+
+
+# Colors and shape
+
+```{r}
+library(car)
+
+qplot(y = fat.log10,
+      x = mass.log10, 
+      data = dat2,
+      color = Australia,
+      shape = diet)
+```
+
+
+
+# Facets
+Plot different groups on sep. panels.
+
+This allows you to explore structure of data.  This reveals something interesting - aquatic carnivores seem to have a positive fat~mass relationship, while terrestrial carnivores seem to have a negative one.  This is interesting, since the authors found no overal significant relationship between body size and milk composition, but they did not explore any interactions.  This would be difficult to model with the given sample size though b/c it imlies a mass*diet*aquatic interaction.  Since all of the aquatic animals in the dataset are carnivores, the carnivore diet category could be split into terrestrial and aquatic groups. 
+
+```{r}
+qplot(y = fat.log10,
+      x = mass.log10, 
+      data = dat2,
+      color = Australia,
+      shape = diet,
+      facets = biome ~ diet)
+```
+
+
+Note the outliers the hand off the bottom of two of the three lower panels.  I'll use colors to see what they are
+
+```{r}
+qplot(y = fat.log10,
+      x = mass.log10, 
+      data = dat2,
+      color = order,
+      shape = diet,
+      facets = biome ~ diet)
+```
+
+
+
+In the herbivore-terrestrial panel it appears like Perrissodactyla all form a line.  These are odd-toed ungulates like rhinos and horses.  The really low triangle I believe is a rhino.  IN the Omnivore-terrestrial panel it looks like clump of primates are outliers.  I'm going to guess these are lemurs.
+
+```{r}
+qplot(y = fat.log10,
+      x = mass.log10, 
+      data = dat2,
+      color = family,
+      shape = diet,
+      facets = biome ~ diet)
+```
+
+
+Make an index for lemurs
+```{r}
+i.lemur <- which(dat2$family == "Lemuridae")
+
+dat2$lemurs <- "not.a.lemur"
+dat2$lemurs[i.lemur] <- "lemur"
+```
+
+
+Yup, its the lemurs.  This indicates that for their size they have really lean milk (low fat)
+```{r}
+qplot(y = fat.log10,
+      x = mass.log10, 
+      data = dat2,
+      color = lemurs,
+      shape = diet,
+      facets = biome ~ diet)
+```
+
+
+
+# Save data
+
+Save our data subset
+```{r}
+write.csv(dat2,"milk_subset.csv")
+```
+
+

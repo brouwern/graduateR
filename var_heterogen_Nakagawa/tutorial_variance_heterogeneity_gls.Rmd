@@ -1,0 +1,524 @@
+---
+title: "Modeling heterogeniety of variance with gls()"
+author: "brouwern@gmail.com"
+date: "April 5, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Modeling variance heterogeniety / heteroskedasticity
+
+In this tutorial we will use the gls() and lme() functions from the nlme package to relax the normal assumption that variances are constant/homogenous between groups.   We will focus on differences between groups (ie treatments, sex) but this approach can also be used to model changes in variance correlated with continous variables, such as an increase in variance in size as organism increase in age. 
+
+## Source data
+
+This tutorial is based on Cleasby & Nakagawa (2011), who discussed various approaches to modeling heterogenous variance, with special reference to ecological and behavioral studies  The data is originally from Griffiths et al (1999), who studied the impact of supplemental food on bird growth, represented by the length of the adult bird's leg (tarsus; "adult.tarsus" in the dataframe)
+
+
+## References
+
+**Cleasby & Nakagawa 2011.**  Neglected biological patterns in the residuals: a behavioral ecologist's guide to co-operating with heteroscedasticity.  Behav Eco and Sociobiology 65.
+*
+**Griffiths et al 1999.**  Environmental determinants of a sexually selected trait.  Nature 400.
+
+
+
+# Preliminaries
+
+## Load packages
+```{r}
+library(nlme)
+library(bbmle)
+library(ggplot2)
+library(cowplot)
+
+```
+
+
+## Load data
+
+Data were provided by Cleasby & Nakagawa (2011).  I have added an additional column "group" that will be used for an example of using lme with random effects.
+```{r}
+h.dat <- read.csv(file  =  "sparrow_tarsus_with_fake_groups.csv")
+```
+
+
+## Look at data
+
+Variables:
+
+* sex
+* adult.tarsus = length of avian leg
+* trt = treatment; control birds or birds given supplemental food
+* group = simulated grouping variable (ie, site)
+
+```{r}
+head(h.dat)
+
+#there are 64 individual
+dim(h.dat)
+
+#2 sexes, 2 treatments
+summary(h.dat)
+
+#data is somewhat unbalanced
+with(h.dat, 
+     table(sex, trt))
+```
+
+
+<br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br>
+
+# Plot data
+
+
+### Boxplots
+
+* If variances were the same boxplots would have similar shape but only differ in the location of their medians.
+* This code makes a plot Similar to Cleasby & Nakagawa (2011) Fig.3.
+
+
+```{r}
+qplot(y = adult.tarsus,
+      x = sex,
+      color = trt,
+      data = h.dat,
+      geom = "boxplot") +
+  xlab("Sex") +
+  ylab("Tarsus length (mm)")
+```
+
+### Histograms
+
+**Question:**
+
+* Can you represent the distribution of adult.tarsus using a histogram in ggplot? This is a bit tricky so if you don't get it on your 1st try, see the answer below.
+* To vary the color of the histogram, use "fill =", not "color =".  Fill determines the color of the bars, but color is just the outline.
+
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Histogram
+
+* More than one way to do this; the 1st is the easiest.  
+* Histograms are just defined by one variable, so there is no "y =" and "x = "; just prvodie the name of the variable.
+
+
+#### Without facets
+```{r}
+qplot(adult.tarsus,
+      fill = trt,
+      data = h.dat) 
+
+qplot(adult.tarsus,
+      fill = trt,
+      geom = "histogram",
+      data = h.dat) 
+
+ggplot(data = h.dat,
+       aes(adult.tarsus)) +
+  geom_histogram(aes(fill = trt))
+```
+
+#### With facets
+```{r}
+# 2 x 1 facet
+qplot(adult.tarsus,
+      fill = trt,
+      data = h.dat,
+      facets = . ~ sex) 
+
+# 2 x 2 facet
+qplot(adult.tarsus,
+      fill = trt,
+      data = h.dat,
+      facets = trt ~ sex) 
+```
+
+
+
+
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+
+
+
+# Modeling
+
+We'll model the impact of food on bird tarsal length and account for differences between the sexes.  If we just had a single factor (ie food treatment) we could use t.test() with the default correction for unequal variance (Welch's correction).  Since we have two factors (treatment and sex) we need to use a more complicated model.
+
+
+# gls() model of heterogenity of variance
+
+
+* C&N 2011 build 2 models
+    + standard linear model with assuming homogeneous variances.  
+    + model that allows variance to differ for the 4 subgroups in the analysis
+    + both models are fit with th gls() function.
+    + the 2nd model will use the varIdent() function to model the differences in variance.
+* variance modeled using the gls() function
+* gls = "generalized least squares"
+
+
+
+## Fit gls() models
+
+1st, fit a model with gls() that has no component to model the variance.  Note that for consistency you should NOT fit this model with lm(), but use gls().
+
+```{r}
+gls.no.var <- gls(adult.tarsus ~ sex + trt,
+                  data = h.dat)
+```
+
+
+2nd, using the varIdent() command to allow variance to be modeled separately for each of the 4 sex-feeding treatment combinations.
+
+```{r}
+# "sxXtrt" = 
+## "sex x trt"
+gls.var.sxXtrt <- gls(adult.tarsus ~ sex + trt,
+            weights = varIdent(form = ~1|sex*trt),
+            data = h.dat)
+
+```
+
+
+
+## Compare gls() models
+
+### Compare coefficients
+
+We can compare the coefficients from the two models to C&N's table 3 (page ????).  This uses the coef() function.
+```{r}
+data.frame(Homoskedastic   = coef(gls.no.var),
+           Heteroskedastic = coef(gls.var.sxXtrt))
+```
+
+
+### Compare AIC scores
+
+* Use AICtab from the bbmle package to get AIC values
+* I get slightly higher AIC for the 2nd model than they do (150.8 vs. 152).  Not sure why...
+
+```{r}
+AICtab(gls.no.var,
+       gls.var.sxXtrt,
+       base = TRUE)
+```
+
+
+
+
+### Compare with hypothesis test
+
+* When models are "nested" we can compare them with a hypothesis tests
+* The model that doesn't accommodate variance heterogeneity can be considered a simpler version of the model that does include the varIdent term.
+
+```{r}
+anova(gls.no.var,
+      gls.var.sxXtrt)
+```
+
+**Question**
+Do AIC and the p-value agree?
+
+
+
+
+
+## Compare additional gls() models
+
+* The more complicated model with the varIdent() term is only a little better according to AIC.  
+* We can try simpler models that only allow for variance heterogeneity within the two treatments and a model for variance between the sexes
+* Note that we cannot do "varIdent(form = ~1|trt+sex)"
+
+
+Allow variances to vary by treatment (trt)
+```{r}
+gls.var.trt <- gls(adult.tarsus ~ trt + sex,
+            weights = varIdent(form = ~1|trt),
+            data = h.dat)
+```
+
+
+**Question**
+
+Can you make a model using gls() where variances vary by sex?  Call the model "gls.var.sex" (answer bloew)
+```{r}
+
+```
+
+
+
+
+
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Variances vary by sex.
+
+
+```{r}
+gls.var.sex <- gls(adult.tarsus ~ trt + sex,
+            weights = varIdent(form = ~1|sex),
+            data = h.dat)
+```
+
+
+
+### Model comparison
+We can compare our 4 models w/ AIC to see if a simpler variance model is better.
+
+```{r}
+AICtab(gls.no.var,
+      gls.var.trt,
+      gls.var.sex,
+      gls.var.sxXtrt,
+      base = TRUE)
+```
+
+
+Note that we cannot compare all of these models with a hypothesis test using the anova() function.  That is because the treatment and sex variance models are not "nested".  We can call the anova() function on them, but it won't give us a p value.  (There are some fancier methods that might allow this to be done but they are not widely used)
+```{r}
+anova(gls.var.sex,
+      gls.var.trt)
+```
+
+
+### Modeling variance vs. transformation
+
+Another way to deal with unequal variance is a transformation.  However, we can't compare a model with log(adult.tarsus) as the response variable and one with just adult.tarsus.  
+
+**Question**
+
+What happens when you use anova() or AICtab to compare a model with log(adult.tarsus) and adult.tarsus.  Build a log(adult.tarsus) to find out.
+
+
+
+
+
+
+
+
+
+
+## Other notes
+
+* There are a variety of functions that can be used to accommodate heterogeneous variances
+* see ?varClasses for options that work with continuous covariates and combinations of continuous and categorical variables
+* See the Zuur et al Penguin Book for more info on this topic.
+
+
+
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+
+
+## AIC vs. AICc
+
+* In general AICc should be used instead of AIC to correct for small sample sizes
+* This can be done by using the ICtab() in bbmle instead of AICtab() and setting type = "AIC"
+* sometimes when using AICc you have to specify the sample size using the "nobs ="" argument (It depends on the function used to fit the model).  In this particular case you don't, but I have added it for reference.
+
+```{r}
+ICtab(gls.no.var,
+      gls.var.trt,
+      gls.var.sex,
+      gls.var.sxXtrt,
+      type = "AICc",
+      nobs = dim(h.dat)[1],
+      base = TRUE)
+```
+
+**Question**
+
+How does this change our conclusions regarding whether we should model the variancee?
+
+
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+
+
+# Hypothesis tests on variance heterogenity
+
+* There are tests that allow you test the null hypothesis "is the variance heterogenous".
+    + Barlett's test: bartlett.test()
+    + Levene's test: leveneTest()
+    + note: the synatx for these functions is a bit different
+* Some people still like to do these; they are becoming less popular.
+* See http://www.cookbook-r.com/Statistical_analysis/Homogeneity_of_variance/
+
+
+
+
+## Bartlett's test
+
+* The function interaction() generates the 4 separate groups (each sex in each treatment)
+    + this won't work with bartlett.test(): "adult.tarsus ~ trt*sex"
+    + ...but it would with leveneTest()
+    + grrrrr......
+
+```{r}
+bartlett.test(adult.tarsus ~ interaction(trt,sex), 
+              data=h.dat)
+```
+
+Barlett's test p value is close to 0.05.
+
+
+
+## Levene's test
+
+* Levene's test is in the car package.
+* R being what it is, you don't have to use the interaction() function; you can just use normal formula notation (adult.tarsus ~ trt*sex)
+
+```{r}
+library(car)
+
+
+leveneTest(adult.tarsus ~ trt*sex, 
+              data=h.dat)
+
+```
+
+Levene's test p values is very large.  I don't know enough about these tests to know why they differ.
+
+
+
+
+
+# Modeling variance heterogeneity and random effects
+
+* I added 4 fake groups to the data so that I could fit random effects 
+* Let's pretend that these represent 4 different locations where the experiment was conducted.
+* We can therefore build a model that uses a random effect to "block" by our made up sites AND models heterogeneity of variance
+
+
+First, look at the group variable
+```{r}
+h.dat$group <- factor(h.dat$group)
+summary(h.dat$group)
+
+with(h.dat, table(group,sex))
+```
+
+
+1st, a random effects model "blocking" by my made up grouping variable.  This is fit with the lme() function; gls() doesn't handle random effects.
+
+```{r}
+lme.novar <- lme(adult.tarsus ~ trt + sex,
+            random = ~1|group,
+            data = h.dat)
+```
+
+
+2nd, a model with both a random effects ("random = ...") and variance heterogeneity ("weights = varIdent(...)")
+
+```{r}
+lme.var <- lme(adult.tarsus ~ trt + sex,
+            random = ~1|group,
+            weights = varIdent(form = ~1|sex*trt),
+            data = h.dat)
+```
+
+
+
+We can compare models fit with both lme and gls using AIC.
+
+```{r}
+ICtab(gls.no.var,
+      gls.var.sxXtrt,
+      lme.novar,
+      lme.var,
+      type = "AICc",
+      nobs = dim(h.dat)[1],
+      base = TRUE)
+```
+
+
+
+# On updating models
+
+A cool command in R is update().  It allows you to take a fitted model and add a new term to it.  1st, let's run our gls() model with just "trt" as a predictor
+
+```{r}
+gls.trt <- gls(adult.tarsus ~ trt,
+                  data = h.dat)
+```
+
+
+
+Now we can add the sex term to make the model "trt + sex" (an additive model).  We give update() the original model name (gls.trt), and the ". ~ . + sex" means "take the original model and add the sex variable."  The ".~." means "the original model".
+
+```{r}
+gls.add <- update(gls.trt, 
+                  . ~ . + sex)
+```
+
+
+We can also  use the update() command to add  varIdent() to an existing model.  Note that we separate the ".~." part and the varIdent part with a comma.
+
+```{r}
+gls.add.var <- update(gls.add, 
+                     . ~ . ,
+                     weights = varIdent(form = ~1|sex*trt))
+```
+

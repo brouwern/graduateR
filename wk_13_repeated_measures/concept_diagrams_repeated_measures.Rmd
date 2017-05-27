@@ -1,0 +1,245 @@
+---
+title: "Repeated measures designs"
+author: "brouwern@gmail.com"
+date: "April 6, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#
+
+```{r}
+library(ggplot2)
+library(cowplot)
+```
+
+
+
+
+```{r}
+
+times   <- c("baseline",
+             "time.1st",
+             "time.x",
+             "time.y",
+             "time.last")
+n.times <- length(times)
+Y.initial <- 5
+Y.control   <- rep(Y.initial,n.times)
+
+group.C <- rep("control",n.times)
+group.trt <- rep("treatment",n.times)
+
+Y.treatment <- c(Y.initial*0.95,
+                   Y.initial*1.5,
+                   Y.initial*2,
+                   Y.initial*2.5,
+                   Y.initial*2.75)
+
+
+dat <- data.frame(
+  time.point = c(times,times),
+  response.var = c(Y.control,Y.treatment),
+  group = c(group.C,group.trt)
+)
+
+dat$time.point <- factor(dat$time.point,
+                         levels = times)
+
+```
+
+
+
+
+
+# Plotting function
+
+```{r}
+plot.rm.example <- function(dat.use, title){
+  ggplot(aes(y = response.var,
+           x = time.point,
+           color = group,
+           shape = group,
+           group = group),
+      data = dat.use) +
+  geom_point(size = 4) +
+  geom_line(size = 1,
+            aes(linetype = group)) +
+  ylim(0,15) +
+  scale_x_discrete(labels = times,
+                   limits = times) +
+    ggtitle(title) +
+    xlab("Time point") +
+    ylab("Reponse variable (Y)") +
+    geom_vline(xintercept = 1.5,linetype = 2)
+}
+```
+
+
+
+# Before-after
+```{r}
+i.use <- which(dat$time.point %in% c("baseline","time.last"))
+plot.rm.example(dat[i.use,],
+                title = "Before-after")
+```
+
+
+# Classic Repeated measures
+```{r}
+i.base <- which(dat$time.point == "baseline")
+plot.rm.example(dat[-i.base,],
+                title = "Classic repeated measures: rmANOVA")
+```
+
+
+
+# Modern Repeated measures - accomodates missing data
+```{r}
+i.drop1 <- which(dat$time.point == "time.y" &
+                  dat$group == "control")
+
+i.base <- which(dat$time.point == "baseline")
+
+
+
+plot.rm.example(dat[-c(i.drop,i.base),],
+                title = "Modern repeated measures: mixed model")
+```
+
+
+
+
+# Treatment but no time effect
+
+```{r}
+
+dat.trt.only <- dat
+
+dat.trt.only$response.var[which(dat.trt.only$group == "treatment")] <- c(Y.initial*2.75,
+                   Y.initial*2.75,
+                   Y.initial*2.75,
+                   Y.initial*2.75,
+                   Y.initial*2.75)
+
+
+
+
+i.base <- which(dat.trt.only$time.point == "baseline")
+
+
+plot.rm.example(dat.trt.only[-i.base,],
+                title = "Treatment effect")
+```
+
+
+# Time only effect
+
+```{r}
+
+dat.time.only <- dat
+
+
+
+
+dat.time.only$response.var[which(dat.time.only$group == "control")] <- c(Y.initial*0.925,
+                   Y.initial*1.25,
+                   Y.initial*2,
+                   Y.initial*2.25,
+                   Y.initial*2.725)
+
+
+i.base <- which(dat.time.only$time.point == "baseline")
+
+
+plot.rm.example(dat.time.only[-i.base,],
+                title = "Time effect")
+```
+
+
+
+
+# Complex treatment x time
+
+```{r}
+
+dat.time.x.time.complex <- dat
+
+
+dat.time.x.time.complex$response.var[which(dat.time.x.time.complex$group == "treatment")] <- c(Y.initial*0.95,
+                   Y.initial*0.95,
+                   Y.initial*2,
+                   Y.initial*2.5,
+                   Y.initial*0.95)
+
+
+
+
+i.base <- which(dat.time.x.time.complex$time.point == "baseline")
+
+
+plot.rm.example(dat.time.x.time.complex[-i.base,],
+                title = "Treatment x Time")
+```
+
+
+
+# Complex treatment x time 2
+
+```{r}
+
+dat.time.x.time.complex2 <- dat
+
+dat.time.x.time.complex2$response.var[which(dat.time.x.time.complex2$group == "control")] <- c(Y.initial,
+                   Y.initial,
+                   Y.initial,
+                   Y.initial*1.25,
+                   Y.initial*2.725)
+
+dat.time.x.time.complex2$response.var[which(dat.time.x.time.complex2$group == "treatment")] <- c(Y.initial*0.925,
+                   Y.initial*1.25,
+                   Y.initial*2,
+                   Y.initial*2.25,
+                   Y.initial*2.725)
+
+
+
+i.base <- which(dat.time.x.time.complex2$time.point == "baseline")
+
+
+plot.rm.example(dat.time.x.time.complex2[-i.base,],
+                title = "Treatment x Time")
+```
+
+
+
+
+# Complex treatment x time3
+
+```{r}
+
+dat.time.x.time.complex2 <- dat
+
+dat.time.x.time.complex2$response.var[which(dat.time.x.time.complex2$group == "control")] <- c(Y.initial,
+                   Y.initial*0.65,
+                   Y.initial*1.025,
+                   Y.initial*1.25,
+                   Y.initial*1.575)
+
+dat.time.x.time.complex2$response.var[which(dat.time.x.time.complex2$group == "treatment")] <- c(Y.initial*0.925,
+                   Y.initial*1.25,
+                   Y.initial*2,
+                   Y.initial*2.25,
+                   Y.initial*2.725)
+
+
+
+i.base <- which(dat.time.x.time.complex2$time.point == "baseline")
+
+
+plot.rm.example(dat.time.x.time.complex2[-i.base,],
+                title = "Treatment x Time")
+```

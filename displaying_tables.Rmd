@@ -1,0 +1,153 @@
+---
+title: "temp2"
+author: "brouwern@gmail.com"
+date: "January 2, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#
+
+
+
+# Load data
+```{r data}
+betas <-c(1887
+,897
+,1997
+,4513
+,930
+,3535
+,2260
+,4879
+,4218
+,4484
+,1295#
+,1897
+,1527
+,3179
+,4117
+,4210
+,3444
+,9505
+,7375
+,4275
+)
+
+
+Ki67 <- c(28
+,6
+,11
+,17
+,3
+,12
+,40
+,29
+,33
+,47
+,18#
+,26
+,24
+,72
+,62
+,77
+,65
+,104
+,140
+,73)
+
+
+# "trt" = the experimental "treatment"
+trt <- c(rep("MBP",10),rep("MBP-hBT",10))
+
+#df is short for "dataframe"
+df <- data.frame(total.cells = betas,
+                 Ki67 = Ki67,
+                 treatment = trt)
+
+```
+
+
+# Displaying tables
+
+https://cran.r-project.org/web/packages/gridExtra/vignettes/tableGrob.html
+
+```{r}
+
+library(grid)
+library(gridExtra)
+
+df.head <- rbind(head(df))
+
+t.eq <- c("t == over(bar(x)[1]-bar(x)[2],sigma)")
+df.x <- matrix(data = t.eq)
+
+
+tt3 <- ttheme_minimal(base_size = 55, parse = T)
+windows()
+grid.newpage()
+grid.table(df.x, theme =tt3)
+
+
+
+```
+
+
+```{r}
+
+x <- grid.locator(unit = "native")
+```
+
+
+```{r}
+par(mai = c(0,0,0,0))
+plot(c(1:10) , c(1:10), col  = 0, lwd = 0,
+     axes = T, xlab = "",ylab = "",tck = 0,
+     xaxt = "n",yaxt = "n")
+
+text(5,5, expression(t == over(bar(x)[1]-bar(x)[2],sigma)), cex = 3)
+```
+
+
+```{r}
+plotarrow <- function(lwd. = 2, 
+                      lngth = 0.1,
+                      col. = 2){
+  locs <- locator(2)
+  arrows(x1 = locs$x[1], y1 = locs$y[1], 
+         x0 = locs$x[2], y0 = locs$y[2],
+         lwd= lwd., length = lngth, col = col.)
+}
+
+plotarrow()
+```
+
+
+
+
+```{r}
+placelabel <- function(lab. = "label",
+                       lwd. = 2, 
+                      lngth = 0.1,
+                      col. = 2,
+                      pos. = 4){
+  locs <- locator(1)
+  text(x = locs$x,y = locs$y, label = lab., pos = pos.)
+}
+
+placelabel("test statistic")
+```
+
+
+```{r}
+t. <-  seq(-10,10,by = 0.01)
+d. <- dt(x = t., df = 20)
+plot(d. ~ t.)
+
+```
+
+
+

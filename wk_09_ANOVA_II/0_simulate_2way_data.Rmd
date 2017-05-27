@@ -1,0 +1,65 @@
+---
+title: "Script to simulate 2-way anova"
+author: "brouwern@gmail.com"
+date: "March 16, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 
+```{r}
+n <- 10
+noA <- rep("no.A",n)
+noB <- rep("no.B",n)
+TAs <- rep("Drug.A",n)
+TBs <- rep("Drug.B",n)
+
+trt.A <- c(noA, TAs)
+trt.B <- c(noB, TAs)
+
+
+dat.2way <- expand.grid(rep = 1:5,
+            drug.A = c("no.A","drug.A"),
+            drug.B = c("no.B","drug.B"))
+
+mm <- model.matrix(~drug.A*drug.B,dat.2way)
+
+
+baseline <- 10
+trt.effect.A <- 5
+trt.effect.B <- 10
+intxn.AB     <- 10
+
+betas <- c(baseline, 
+           trt.effect.A,
+           trt.effect.B,
+           intxn.AB)
+
+n.tot <- dim(dat.2way)[1]
+
+dat.2way$resp.cont <- mm%*%betas + rnorm(n.tot,0,5)
+
+dat.2way$Treatment.combo <- with(dat.2way,
+                                 paste(drug.A,
+                                       drug.B,
+                                       sep = "/"))
+dat.2way$Treatment.combo  <- factor(dat.2way$Treatment.combo)
+
+
+
+
+```
+
+
+
+Save data
+```{r}
+write.csv(dat.2way,file = "fake_example_2way_anova_data.csv",row.names = F)
+```
+
+
+
+

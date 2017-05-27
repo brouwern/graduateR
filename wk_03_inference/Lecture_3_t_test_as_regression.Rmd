@@ -1,0 +1,235 @@
+---
+title: "The t-test as regression"
+author: "brouwern@gmail.com"
+date: "January 26, 2017"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE,
+                      cache = TRUE, warnings = FALSE, strip.white = F)
+```
+
+
+
+# The Data
+
+Today we will work with the rat bladder data again.
+
+Motulsky 2nd Ed, Chapter 30, page 220, Table 30.1.  Maximal relaxaction of muscle strips of old and young rat bladders stimualted w/ high concentrations of nonrepinephrine (Frazier et al 2006).  Response variable is %E.max
+
+```{r}
+#make dataframe with data in 2 sep. columns
+df.rats <- data.frame(
+old = c(20.8,2.8,50.0,
+        33.3,29.4,38.9, 29.4,52.6,14.3),
+young = c(45.5,55.0, 60.7, 
+          61.5, 61.1, 65.5,42.9,
+          37.5, NA))
+
+
+```
+
+
+
+# Reshape data
+
+```{r, echo = F, cache = T,warning=FALSE}
+#make stacked dataframe
+library(reshape2)
+df.rat.stack <- melt(df.rats,
+                     variable.name = "rat.age",
+                     value.name = "percent.E.max")
+
+
+```
+
+# Plot data
+
+* You can put 2 plots next to each other using "par(mfrow = c(1,2)"
+* A 2 x 2 grid would be "c(2,2)"
+* and so on
+
+```{r}
+par(mfrow = c(1,2))
+library(beeswarm)
+
+#beeswarm plot of raw dta
+beeswarm(percent.E.max ~ rat.age, 
+         col = c(1,2),
+         df.rat.stack)
+
+#boxplot
+boxplot(percent.E.max ~ rat.age, 
+         #col = c(1,2),
+         df.rat.stack)
+
+```
+
+
+
+# Plot means
+
+* If you want just one plot again you have to reset par to "par(mfrow = c(1,1))"
+* Note use of with()
+```{r}
+par(mfrow = c(1,1))
+library(sciplot)
+with(df.rat.stack,
+     lineplot.CI(x.factor = rat.age,
+                 response = percent.E.max,
+                 #ylim = ylim.,
+                 xlab = "Rat age",
+     ylab = ""),
+     )
+```
+
+
+# t-test
+
+
+```{r}
+t.test(percent.E.max ~rat.age,
+       df.rat.stack,
+       var.equal = T)
+```
+
+* NB: set " var.equal = T"
+* would not normally do this
+* t = 3.5315
+* df = 15
+* p = 0.003022
+
+
+# t-test as linear regression
+
+## Fit a linear regression
+
+* linear regression = linear model = lm()
+* assign output of model to an object
+```{r}
+rat.lm1 <- lm(percent.E.max ~ rat.age,
+       df.rat.stack)
+```
+
+## Look at output of lm()
+
+* To look at output of a linear regression use summary()
+```{r}
+summary(rat.lm1)
+```
+
+
+
+# t-test as a stat. model 
+
+## Null hypothesis: No difference between old and young rats
+
+* We can  represent this hypothesis as a model
+* Instead of "~rat.age" we do "~1"
+* So our equation is "percent.E.max ~ 1"
+* This means "model percent.E.max just as a single mean value"
+
+### Make model
+
+```{r}
+rat.lm.null <- lm(percent.E.max ~ 1,
+       data = df.rat.stack)
+```
+
+### Look at Null model
+
+```{r}
+summary(rat.lm.null)
+```
+
+
+<br><br>
+
+## Alt hypothesis:  difference between old & young rats
+
+* We can  represent this hypothesis as a model
+* So our equation is "percent.E.max ~ rat.age"
+* This means "model percent.E.max with seperate means for each age group"
+* (This is the same model we made above)
+
+```{r}
+rat.lm.alt <- lm(percent.E.max ~ rat.age,
+       data = df.rat.stack)
+```
+
+
+### Look at Alt model
+
+```{r}
+summary(rat.lm.alt)
+```
+
+
+<br><br>
+
+## Compare the models
+
+One way of thinking about this hypothesis is, "If we wanted to predict E.max for  young rat in a new experiment, what's the best prediction?  The mean of all the rats from the 1st study, or the mean of the young rats?"
+
+```{r}
+anova(rat.lm.alt, rat.lm.null)
+```
+
+
+
+
+```{r}
+
+AIC(rat.lm.null)
+AIC(rat.lm.alt)
+
+```
+
+
+
+
+
+
+# t-test w/o versus w/ equal variance
+
+What we just ran
+```{r}
+t.test(percent.E.max ~rat.age,
+       df.rat.stack,
+       var.equal = T)
+```
+
+
+The default is "var.equal = F"; don't have to include it
+```{r}
+t.test(percent.E.max ~rat.age,
+       df.rat.stack,
+       var.equal = F)
+```
+
+
+
+# linear regression correcting for unequal variance
+
+* We can correct for unequal variance using the gls() function in the nlme package
+* gls = "generalized least squares"
+* nlme = "non-linear mixed effects"
+* If you've done regression by hand in Excel, "least squares" is probably what you did
+
+```{r}
+library(nlme)
+
+rat.gls <- gls(percent.E.max ~rat.age,
+       df.rat.stack, 
+       na.action = na.omit,
+       weights  = varPower())
+```
+
+
+
+```{r}
+summary(rat.gls)
+```
+

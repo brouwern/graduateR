@@ -1,0 +1,273 @@
+---
+title: "Cleaning data"
+author: "brouwern@gmail.com"
+date: "April 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 
+
+```{r}
+list.files()
+dat1 <- read.csv("grogan_bad_data.csv")
+
+
+```
+
+
+```{r}
+dim(dat1)
+```
+
+
+# Extra columns to right of data
+
+```{r}
+head(dat1,15)
+```
+
+
+Can delete mannually in Excel or remove using indexing "negative indexing".
+
+```{r}
+dat1 <- dat1[,-c(5,6,7)]
+```
+
+Check
+
+```{r}
+head(dat1)
+```
+
+
+# Check factors
+
+"fraction" and "abs" columns have issues
+```{r}
+summary(dat1)
+```
+
+
+# Fix bad factor with which()
+
+
+## Fix typos
+
+Fix the lower case "l" by changing to "L"
+```{r}
+i.l <- which(dat1$fraction == "l")
+
+dat1$fraction[i.l]
+
+dat1$fraction[i.l] <- "L"
+
+```
+
+
+```{r}
+i.p <- which(dat1$fraction == "p")
+i.s <- which(dat1$fraction == "s")
+
+
+dat1$fraction[i.p] <- "P"
+dat1$fraction[i.s] <- "S"
+```
+
+Could also do this w/ ifelse(), but I find that this function's behavior can do unexpected things.
+
+
+## Check output
+
+Note that the "l" and other lowercase factor names are still there!
+
+```{r}
+summary(dat1)
+```
+
+
+## Get ride of old factor levels
+
+
+Change to character data
+```{r}
+dat1$fraction <- as.character(dat1$fraction)
+```
+
+Check
+```{r}
+summary(dat1)
+```
+
+
+Change back to factor
+```{r}
+dat1$fraction <- as.factor(dat1$fraction)
+```
+
+
+Check
+```{r}
+summary(dat1$fraction)
+```
+
+
+# Edit factor levels
+
+## Change order of factor levels
+
+Deafult is alphabetial.  Can use factor() function to reorder
+```{r}
+dat1$fraction <- factor(dat1$fraction,
+                        levels = c("P","L","S"))
+```
+
+
+There is a function relevel() that can do somethign similar; however, it only sets the base or reference level and so isn't good if you have 3+ levels to the factor variable.
+
+## Rename factor
+
+```{r}
+dat1$fraction <- factor(dat1$fraction,
+                        labels =c("Px","Ly","Sz"))
+
+```
+
+
+```{r}
+summary(dat1$fraction )
+```
+
+
+
+
+
+# Fix numeric data
+
+```{r}
+summary(dat1)
+```
+
+
+```{r}
+dat1$abs
+```
+
+
+## Find the bad value using its exact label
+```{r}
+i.bad <- which(dat1$abs == "0.127069 a")
+
+dat1$abs[i.bad]
+```
+
+
+## Find the bad value using a "Regular expression"
+
+```{r}
+i.bad.grep <- grep("a",dat1$abs)
+```
+
+
+```{r}
+dat1$abs[i.bad.grep]
+```
+
+
+## Overwrite by hand
+
+```{r}
+dat1$abs[i.bad.grep] <- "0.127069"
+```
+
+Doesn't work!  Why?!?!!
+
+
+## Convert to character data first
+```{r}
+dat1$abs <- as.character(dat1$abs)
+```
+
+
+```{r}
+summary(dat1$abs)
+```
+
+
+
+
+## Make the change using index
+
+```{r}
+dat1$abs[i.bad.grep] <- "0.127069"
+```
+
+Conver to numeric
+
+```{r}
+dat1$abs <- as.numeric(dat1$abs)
+```
+
+
+Check
+
+```{r}
+summary(dat1$abs)
+```
+
+
+## Make the change using regular expression
+
+Reload data
+```{r}
+dat2 <- read.csv("grogan_bad_data.csv")
+```
+
+
+```{r}
+dat2$abs <- gsub("a","",dat1$abs)
+```
+
+No error!  Data converted to character data on the fly
+
+```{r}
+summary(dat2$abs)
+```
+
+
+
+```{r}
+dat2$abs <- as.numeric(dat2$abs)
+```
+
+```{r}
+summary(dat1$abs)
+summary(dat2$abs)
+```
+
+
+
+# Reshape data
+
+Data is in "long format"
+
+```{r}
+head(dat1)
+```
+
+
+
+
+
+```{r}
+library(multcomp)
+
+which(dat1$strain ==)
+
+summary(glht(aov, linfct=mcp(Group="Dunnett")))
+```
+
+

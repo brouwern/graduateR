@@ -1,0 +1,20 @@
+---
+title: "graduateR Boiler Plate"
+author: "brouwern@gmail.com"
+date: "May 26, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Graduate Biostats Course
+Winter 2017
+Duquesne University 
+Department of Biological Sciences
+Nathan Brouwer, Phd
+brouwern@gmail.com
+https://github.com/brouwern

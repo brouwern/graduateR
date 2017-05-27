@@ -1,0 +1,105 @@
+Lecture 1: Intro to Course
+========================================================
+author: Nathan Brouwer (brouwern@gmail.com)
+date: Thursday, Jan. 12 2017
+autosize: true
+
+Outline of Today
+========================================================
+
+- "Hi, I'm Nathan"
+- Who are R you?
+- Key themes of course
+- Does everyone have R? / Does everyone have RStudio?
+- The Basics of R
+- The Basics of RStudio
+- Intro to RMarkdown
+- An R Case Study: Retraction of Yi et al 2013
+- Homework: t-test
+
+
+"Hi, I'm Nathan"
+========================================================
+
+- BS Biology
+- Vaccine reseach, Peace Corps, plant ecology
+- Dr. for just over 365 day
+- Post doc @ National Aviary
+
+
+"Who are R you?"
+========================================================
+
+(I'm not a fan of R jokes, but they'R so easy...)
+
+
+Key themes of course: **Stats**
+========================================================
+
+- **Statistical fundamentals:** getting the basics right, b/c many biologists get them wrong! (random sampling, what is a p-value, what is a confidence interval, power)
+- **Modern methods in biostats:** multiple regression, logistic regression, mixed effects models, multivariate stats, meta-analysis
+- **Contemporary issues in stats:** ie.  The "replication crisis" in some fields, p-hacking, hierarchical/multilev. models, big data, false discovery rate
+
+Key themes of course: **Computing**
+========================================================
+- **Doing statistics in R:** We'll do all of the above hands-on, in R
+- **Doing graphs in R with _ggplot_:** ggplot is probably the most powerful graphing tool known to humankind (well, close).
+- **Doing reproducible research in R:** documenting what you do using RMarkdown and other tools
+
+
+By the end of the semester you should...
+========================================================
+
+- Use R to **carry out analyses & make graphics** using **ggplot** to include in your dissertation
+- Understand **why those analyses are appropriate**.
+- Be better able to **review the stats of other researchs** (labmates, peer review, your PI...)
+- Know where to look for **help!** for advanced topics
+- Use the basic principals and tools of **reproducible research**
+
+
+Does everyone have R? / Does everyone have RStudio?
+========================================================
+
+
+
+The Basics of **R**
+========================================================
+
+
+
+The Basics of RStudio
+========================================================
+
+- Console
+- Script editor
+- Doing math
+
+
+
+The Basics of RMarkdown
+========================================================
+
+- Chunks
+- Internal consistency
+
+
+
+
+
+
+
+
+
+Slide With Code
+========================================================
+
+```{r}
+summary(cars)
+```
+
+Slide With Plot
+========================================================
+
+```{r, echo=FALSE}
+plot(cars)
+```

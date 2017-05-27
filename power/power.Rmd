@@ -1,0 +1,160 @@
+---
+title: "Power"
+author: "brouwern@gmail.com"
+date: "April 10, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 
+
+Type I error
+Type II error
+alpha
+beta
+Type S error
+Type M erro
+Power
+Prospective power
+Retrospective power/Observed/Post-hoc
+
+
+
+Lazic 2017 5.2 Power analysis and sample size calcualtions
+
+\[Power \propto \frac{ES*\alpha*\sqrt{n}}{\sigma^2}\]
+
+
+**power** = "the probability that an experiment or statistical procedure detects a real effect" (Lazic 2017 pg 206)
+
+eg, 80% Power = "a probablity of 0.8 of successfully detecting a real effect; that is, to reject the null hypothesis" when it is indeed false (Lazic 2017 pg 206)
+
+**prospective power** Calcualtion done before the experiment to determine appropriate sample size to acheve desired power.  Requires assumption about variance and effect size
+
+**retrospective power** or **observed power** Calculation done *after* an experiment using the observed data.  Converts p-value into terms of power; therefore reframes the output of the statistics but provides no new information.  Was once advocated as a useful procedure for being able to determine if the null (Ho) should be accepted, but has been widely criticized.  Gelman and colleagues are reframing the issue using the revised concept of "Design analysis" for estimating the probability is incorrectly determining the sign (pos or neg) of an effect and determing how likely the effect size is to be over estimated.
+
+Retrospective Power is bad:
+Hoenig and Heisey 2001.  The abuse of power: the parvasive fallacy of power calcualtions for data analysis.  Am Stat 55: 19-24.
+
+Retrospective Power is bad: Biomedical references
+Goodman and Berlin 1994.  The use of prediced confidence intervals when planning experiments and the misue of power when interpreting results.  Ann Inter Med 121: 200-2026
+
+Levine and Ensom 2001.  Post hoc power analysis: an idea whose tiem has passed?  Pahrmacotherapy 21: 405-409.
+
+Senn 2002.  Power is indeed irrelevant in interpretting completed studies.  BMJ 325: 1304.
+
+
+Design analysis: retrospective power for assessing Type S and Type M error
+Gelman and Carlin 2014: Beyond power calcualtions: assessing Type S (Sign) and Type M (Magnitude) errors.  Persp Psychol Sci 9:641-651.
+
+
+
+# Power of a t-test
+
+```{r}
+library(labstats)
+data("hypertension")
+
+i.time3 <- which(hypertension$Time == 3)
+
+hyper.end <- hypertension[i.time3,]
+
+
+
+
+summary(hyper.end)
+library(doBy)
+summary.out <- summaryBy(Y ~ Diet, 
+          FUN = c(mean,var,sd),
+          data = hyper.end)
+t.test(Y ~ Diet, data = hyper.end)
+
+)
+
+delta.obs <- summary.out$Y.mean[2]-summary.out$Y.mean[1]
+sd.obs <- mean(summary.out$Y.sd)
+
+#post-hoc power
+power.t.test(n = 5,
+             delta = c(165.2-120.6),
+             sd = 17.89,
+             power = NULL)
+
+#sample size planning:
+## what if we expected the difference in bp
+## to only be 5 
+power.t.test(n = NULL,
+             delta = 5,
+             sd = 17.89,
+             power = 0.80)
+
+
+## ...to only be 10
+power.t.test(n = NULL,
+             delta = 10,
+             sd = 17.89,
+             power = 0.80)
+
+
+## ... to be 20
+power.t.test(n = NULL,
+             delta = 20,
+             sd = 17.89,
+             power = 0.80)
+
+## ... to be 25
+power.t.test(n = NULL,
+             delta = 25,
+             sd = 17.89,
+             power = 0.80)
+
+```
+
+
+
+Could have them vary values and try to figure out what makes it most sensitive
+
+
+
+Multiple values
+
+```{r}
+pwr.grid <- expand.grid(n = seq(5,100,by = 5),
+                          delta = seq(5,50,by = 10),
+                          sd = seq(5,25,by = 5))
+
+dim(pwr.grid)
+
+pwr.grid$pwr <- NA
+for(i in 1:dim(pwr.grid)[1]){
+  pwr.out <-  power.t.test(pwr.grid$n[i],
+                                 pwr.grid$delta[i],
+                                 pwr.grid$sd[i],
+                                 power = NULL)
+  
+  pwr.grid$pwr[i] <-pwr.out$power
+}
+
+
+
+```
+
+
+```{r}
+summary(factor(pwr.grid$delta))
+
+library(ggplot2)
+qplot(y = pwr,
+      x = n,
+      geom = c("line"),
+      color = factor(delta),
+      data = pwr.grid) +
+  facet_grid(sd~.) +
+  geom_hline(yintercept = 0.8,
+             linetype = 2) +
+  geom_hline(yintercept = 0,size = 1)
+```
+

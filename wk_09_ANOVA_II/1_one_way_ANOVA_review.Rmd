@@ -1,0 +1,359 @@
+---
+title: "One-way ANOVA review"
+author: "brouwern@gmail.com"
+date: "March 16, 2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE,
+	eval=FALSE, include=FALSE
+)
+```
+
+## 1) Load data
+
+* file = simulated_1way_data.csv
+* read.csv(file = ...)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r, echo = TRUE}
+dat<-read.csv("simulated_1way_data.csv")
+```
+
+## 2) Plot data in ggplot
+
+### 2a) Basic data visualization
+
+* try different geoms
+    + "boxplot"
+    + "violin" (violin plot)
+    
+```{r}
+library(ggplot2)
+library(cowplot)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+qplot(y = resp.cont,
+      x = Treatment,
+      shape = Treatment,
+      data = dat2) 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r 2a.jittering}
+#Jitttered
+## note: calling the geom within qplot() directly ( qplot(..., geom = "jitter")) doesn't allow control of width for some reason
+qplot(y = resp.cont,
+      x = Treatment,
+      data = dat2) + 
+  geom_jitter(width = 0.25)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+* trying layering geoms
+    + geom = c("boxplot","point")
+```{r 2a.layering}
+#layering geoms
+qplot(y = resp.cont,
+      x = Treatment,
+      data = dat2,
+      geom = c("boxplot",
+               "point")) 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### 2b)Plotting means with ggplot
+
+* use ggplot's stat_summary() function to plot means and error bars
+    + ggplot(...) + stat_summary()
+
+```{r 2b.stat_summary}
+ggplot(data = dat2, 
+       aes(y = resp.cont, 
+           x = Treatment)) +
+stat_summary(fun.data = "mean_se",
+             fun.args = list(mult = 1.96))
+```
+
+
+
+### 2c)Plotting means and rawdata with ggplot
+
+* Use ggplot, stat_summary, and geom_point to plot raw data with means and error bars
+    + ggplot(...) + stat_summary() + geom_point()
+    + use aes(...) to change colors
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+ggplot(data = dat2, 
+       aes(y = resp.cont, 
+           x = Treatment)) +
+stat_summary(fun.data = "mean_se",
+             fun.args = list(mult = 1.96)) +
+geom_point(aes(color = Treatment))
+```
+
+<br><br><br>
+
+## 3) 1-way ANOVA
+
+### 3a) 1-way ANOVA Global F-test / Omnibus test
+
+* Build a "null model" for these data that representing the null hypothesis using the lm() function
+    + ie, "m.null <- lm(resp.cont ~ 1, data = dat)"
+* Build a model representing the alternative hypothesis (m.alt)
+* Look at these models with the summary() command
+    + What do the parameters from m.alt mean?
+* Compare these two models with the anova() command
+    + What would/does a low p-value for this model comparison mean?
+* BONUS: save the output of the anova() command to an object and try to access just the p-value
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+#null model
+m.null <- lm(resp.cont ~ 1, 
+             data = dat2)
+
+#alternative model
+m.alt  <- lm(resp.cont ~ Treatment, 
+             data = dat2)
+
+#model summaries
+summary(m.null)
+summary(m.alt)
+
+#comare models
+## this yields the F statistics
+## and the p-value
+anova(m.null,
+      m.alt)
+```
+
+
+
+
+
+
+
+
+
+
+
+### 3b) Post-hoc comparisons
+
+### Background
+
+* The F-test only tells us that at least 1 mean is different from 1 of the others
+* We can interpret out 95% confidence intervals, but it would be good to get p-values for the comparisons
+* Because there are 3 means there are 3 possible comparisons
+    + Control vs Drug A
+    + Control vs. Drug B
+    + Drug A vs Drug B
+* If we had additional drugs in our experiments the number of possible comparisons woud increase exponentially
+* To control for Type I errors (rejecting null that is indeed false) many people (but not all!...) advocate some kind of "correction for multiple comparisons"
+* There is an obnoxious multitude of ways to do this.
+* There are 2 general categories of approachs:
+    + Bonferonni-based methods: pariwise.t.test() in R
+    + Parameteric methods: TukeyHSD() in R
+    
+    
+<br><br>    
+    
+### Bonferonni-based approaches
+
+* Use pairwise.t.test() on your data
+    + Note that the syntax is different than lm(); is doesen't use the formula notation with a "~"
+    + pairwise.t.test()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+```{r}
+pairwise.t.test(x = dat2$resp.cont,
+                g = dat2$Treatment,
+                pool.sd = T)
+```
+
+
+
+
+
+
+### Parameteric methods
+
+* Use TukeyHSD()
+* TukeyHSD needs a fitted model to work, AND that model must be fit with the aov() function, NOT with lm()
+    + aov(resp.cont ~ Treatment, ...)
+* Run the test: TukeyHSD(aov.model)
+* Plot the output plot(TukeyHSD(aov.model))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# Fit aov() model
+m.aov <- aov(resp.cont ~ Treatment, 
+         data = dat2)
+
+# Run TukeyHSD
+TukeyHSD(m.aov)
+```
+
+
+```{r}
+# Fit aov() model
+m.aov <- aov(resp.cont ~ Treatment, 
+         data = dat2)
+
+# Plot TukeyHSD
+plot(TukeyHSD(m.aov))
+```
+

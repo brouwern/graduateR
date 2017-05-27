@@ -1,0 +1,168 @@
+---
+title: "Duq Lecture 1: Other methods"
+author: "Lecture_1_Intro_other_methods"
+date: "January 12, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Non-parametric methods
+
+## Rank-based tests
+
+### Mann-Whitney U test
+
+#### Assumptions of Mann-Whitney U
+https://statistics.laerd.com/premium-sample/mwut/mann-whitney-test-in-spss-2.php
+
+
+
+```{r}
+p.wilco.2t <- wilcox.test(response ~ trt, data = beta.df)$p.value
+
+p.wilco.log.2t <- wilcox.test(log(response) ~ trt, data = beta.df)$p.value
+
+```
+
+
+## Permutation test
+
+
+### perm::permTS()
+```{r}
+library(perm)
+permTS.out <- permTS(logit(response) ~ trt, 
+                     data= beta.df[-c(10:12),])
+```
+
+
+### exactRankTests::perm.test()
+```{r}
+library(exactRankTests)
+perm.test.out <- perm.test(logit(response) ~ trt, data= beta.df)
+```
+
+
+###  lmPerm::aovp()
+
+```{r}
+
+library(lmPerm)
+aovp.out <- aovp(logit(response) ~ trt, data= beta.df)
+
+summary(aovp.out)
+```
+
+
+
+
+# Parametric test w/ logit transformation
+```{r}
+library(arm)
+boxplot(logit(response) ~ trt, data = beta.df)
+
+```
+
+```{r}
+library(ggplot2)
+
+qplot(y = (response), x = trt,
+      data = beta.df,
+      geom = c("boxplot")) +
+  geom_jitter(width = 0.25)
+
+```
+
+
+```{r}
+lm.1 <- lm(logit(response) ~ trt, data = beta.df)
+
+
+plot(lm.1)
+
+```
+
+
+
+
+## Robust statistics
+
+```{r}
+library(robustbase)
+lmrob.out <- lmrob(logit(response) ~ trt, data = beta.df)
+
+summary(lmrob.out)
+
+```
+
+
+
+
+
+## Betaregression
+
+```{r}
+library(betareg)
+
+betareg.out <- betareg(response ~ trt, data = beta.df)
+summary(betareg.out)
+
+```
+
+
+
+## Bayesian glm
+
+```{r}
+library(arm)
+bayesglm.out <-bayesglm(log(response) ~ trt, 
+                        data = beta.df)
+
+summary(bayesglm.out)
+
+
+Andrew Gelman, Aleks Jakulin, Maria Grazia Pittau and Yu-Sung Su. (2009). "A Weakly Informative Default Prior Distribution For Logistic And Other Regression Models." The Annals of Applied Statistics 2 (4): 1360-1383. http://www.stat.columbia.edu/~gelman/research/published/priors11.pdf
+
+
+```
+
+
+
+
+
+```{r}
+response <-c(0.011904762,8.88E-16,0.011904762,0.54761904,0.41666666,0.2857143,0.32142857,0.3809524,0.5119048,0.5714286,0.86904764,1.3214285,1.8214285,1.8214285,0,8.88E-16,0.25,0.5,0.5595238,0.85714287,0.72619045,0.42857143,0.71428573,0.70238096,0.7380952,0.78571427,0.9404762,0.6785714,0.53571427,0.5,0.41666666,0.35714287,0.23809524,0.26190478,1.2380953,1.1666666,1.0476191,1,1.1309524,1.1666666,1.4166666,1.7261904,1.7023809,2.1785715,2.0714285,2.0952382,2.547619,2.4880953,2.5,2.6666667,3.1547618,3.797619)
+
+trt <-c(rep("GFP",14),rep("betatropin",38))
+
+df <- data.frame(response, trt)
+
+```
+
+
+
+## Model variance w/ mixed model
+
+```{r}
+
+library(nlme)
+library(HLMdiag)
+library(influence.ME)
+
+# gls.out <- gls(logit(response) ~ trt, data = df[-52,],weights = varIdent(form= ??? 1 | trt))
+# 
+# infl <- influence(gls.out, obs = TRUE)
+# Calculate Cook's distance:
+# 
+# cooks.distance(infl)
+# Plot Cook's distance:
+# 
+# plot(infl, which = "cook")
+# 
+# boxplot(logit(response/100) ~ trt, data = df)
+
+```
+

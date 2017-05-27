@@ -1,0 +1,412 @@
+---
+title: "Tutorial: analysis of before/after data"
+author: "brouwern@gmail.com"
+date: "April 5, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Biology
+
+* 24 Patients w/ chronic kidney failure undergoing dialysis
+* Response variable: plasma heparin cofactor II (HCII):plasm protein
+* To investigate effects of dialysis on this ratio over time, researchers stratified patients into "low"  and "normal" HCII groups then tests for change over time.
+    + This is a almost definatle a very bad design b/c it seems like the factor used to divide up the groups (HCII levels) is linked to the respone variable (HCII:protein ratio)
+    + Moreover, its generally a very very bad idea to take a continous variable (HCII) and turn it into a cateogrical variable.
+
+
+# Load data
+
+Original data:
+
+Toulon et al 1987.  Antithrombin III and heparin cofactor II in patients with chronic renal failure undergoing regular hemodialysis.  Thrombosis Haemostasis 57.
+http://europepmc.org/abstract/med/3660328
+
+The Original abstract of this paper is included at the this document.
+
+
+## Input individual groups
+
+Mannually input data
+```{r}
+#just run this code-its for prep
+
+#Table 2 page 265
+#Bland&Altman 2011 Trials 12
+#Group 1: Low HCII
+
+##create a vector of ID variables
+group1.ID <- paste("G1",1:12,sep = ".")
+
+##"before"/baseline data
+group1.before <- c(1.41,1.37,1.33,1.13,1.09,1.03,0.89,0.86,0.75,0.75,0.70,0.69)
+
+#after the treatment
+group1.after <- c(1.47,1.45,1.50,1.25,1.01,1.14,0.98,0.89,0.95,0.83,0.75,0.71)
+
+
+
+#Group 2: normal HCII
+
+##create a vector of ID variables
+group2.ID <- paste("G2",1:12,sep = ".")
+
+group2.before <- c(2.11,1.85,1.82,1.75,1.54,1.52,1.49,1.44,1.38,1.30,1.20,1.19)
+group2.after  <- c(2.15,2.11,1.93,1.83,1.90,1.56,1.44,1.43,1.28,1.30,1.21,1.30)
+
+
+
+```
+
+
+## Make a dataframe
+
+Manually make a dataframe
+
+First, and ID variable
+```{r}
+#group ID
+#just run this code-its for prep
+group.ID <- c(rep("grp1.low",12),
+              rep("grp2.norm",12))
+```
+
+
+## "Wide" data
+
+Compile previously entered vectors into a dataframe
+```{r}
+#just run this code-its for prep
+HCII.wide <- data.frame(ID = 1:12,
+                      ratio.after = c(group1.after,
+                                       group2.after),
+                      ratio.before = c(group1.before,
+                                       group2.before),
+                      group.ID  = group.ID)
+```
+
+
+
+Calculate the difference between the two time periods.  This will be used as a response variable in some analyses.  This is often called a "change score".
+
+```{r}
+HCII.wide$change <- HCII.wide$ratio.after-
+                   HCII.wide$ratio.before
+
+
+```
+
+
+Log transform things before calcualtin the chagne.
+```{r}
+HCII.wide$change.log <- log(HCII.wide$ratio.after)-
+                       log(HCII.wide$ratio.before)
+```
+
+
+## Long data
+
+"Long" data generally works best with R's plotting functions.
+
+```{r}
+#just run this code-its for prep
+time.point <- c(rep("before",24),
+                rep("after",24))
+```
+
+
+```{r}
+#just run this code-its for prep
+HCII.long <- data.frame(ID = c(group1.ID,
+                               group2.ID),
+                        group = c(group.ID,
+                               group.ID),
+                      ratio = c(group1.before,
+                                group2.before,
+                                group1.after,
+                                group2.after),
+                      time.point = time.point)
+```
+
+
+
+
+
+# Plot data
+
+
+## Boxplot
+A boxplot is misleading b/c it ignores the repeated-measures nature of the data.  The focus is not on mean change of group but the mean of individual change.
+
+```{r}
+library(ggplot2)
+qplot(y= ratio,
+      x = time.point,
+      color = group,
+      geom = "boxplot",
+      data = HCII.long)
+```
+
+
+## Interaction plot
+
+A plot that better represents the biology:
+
+```{r}
+qplot(y= ratio,
+      x = time.point,
+      color = group,
+      geom = c("point",
+               "line"),
+      data = HCII.long,
+      group = ID)
+```
+
+
+**QUESTION**
+
+* Why is the interaction plot better?
+* What potential problem do you notice in the data?  How might it be accounted for using ANCOVA?
+
+
+
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+
+
+# Data analysis: A bad approach: seperate tests on change within each group
+
+* This is bad: testing whether the change over time in group 1 is significnat, then doing a seperate test for change in group 2.
+* See Niewenhuis et al 2011. Erroneous analyses of interactions in neuroscience: a problem of significance Nature Neurocscience for a recent high-profile indictment of this approach
+
+
+## Original analysis: Wilcoxon paired test
+
+The original authors (Toulon et al 1987) used seperate paired Wilcoxon signed rank tests on each group.  The day are non-normal so they used a non-parametric method.
+
+### Group 1
+
+The within group comparison of group 1 (Low HCII) has a low p-value
+```{r}
+#wilcox.test (what original author's did)
+wilcox.test(group1.before, 
+            group1.after,
+            paired=TRUE)
+
+#t.test (for comparison)
+t.test(group1.before, 
+      group1.after,
+       paired = TRUE)
+```
+
+
+Both versions of the comparison  are significant
+
+
+
+
+
+### Group 2
+
+```{r}
+#what original author's did
+wilcox.test(group2.before, 
+            group2.after,
+            paired=TRUE) 
+
+#for comparison
+t.test(group2.before, 
+      group2.after,
+       paired = TRUE)
+```
+
+P > 0.05.
+
+
+
+
+For more info on Wilcoxon tests see
+
+http://www.r-tutor.com/elementary-statistics/non-parametric-methods/wilcoxon-signed-rank-test
+
+https://www.r-bloggers.com/wilcoxon-signed-rank-test/
+
+
+
+
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+
+
+## A better analysis: t-test on "change score"
+
+* On page 264 Bland and Altman (2011) suggest a 2-sample t-test on the difference between the "after" and "before" measurments. 
+* These are sometimes called "change scores" (I think espeically in psychology)
+* This could be done on the orginal or logged data
+* The p-values they report appear to be from an equal-variance t-test; I'd use Welch's correction but I'll run it their way to make the comparison easy.
+
+### Raw data
+```{r}
+t.test(change ~ group.ID, 
+       data = HCII.wide,
+       var.equal = TRUE)
+```
+
+
+**QUESTION**
+
+How does this test compare to what the original authors did above?
+
+
+
+
+### logged data
+```{r}
+t.test(change.log ~ group.ID, 
+       data = HCII.wide,
+       var.equal = TRUE)
+```
+
+
+
+
+
+### Mann-Whitney U test
+
+The following section is just for the sake of completeness to replicate the results of Bland and Altman (2011).  Feel free to skip it.  I playd around with things b/c I could not get their exact p-value.
+
+Bland and Altman (2011)  also suggest a Mann-Whitney U-test because of unequal variances (though why not use t-test with Welch's correct?...).  Mann-Whitey is the same as un-paired wilcox.test (check this).  
+
+Using wilcox.test() provides a p-value similar to Bland and Altman, but not exactly
+
+```{r}
+#for comparison to Bland & Altman; feel free to skip
+wilcox.test(change ~ group.ID, 
+            #correct = FALSE,
+            data = HCII.wide)
+```
+
+
+
+### Wilcoxon sign rank test with exactRankTests package
+
+```{r}
+#for comparison to Bland & Altman; feel free to skip
+library(exactRankTests)
+wilcox.exact(change ~ group.ID, 
+            data = HCII.wide)
+
+wilcox.exact(change ~ group.ID, 
+            data = HCII.wide,
+            exact = FALSE)
+```
+
+
+
+### Wilcoxon sign rank test with coin package
+```{r}
+#for comparison to Bland & Altman; feel free to skip
+library(coin)
+wilcoxsign_test(change ~ group.ID, 
+            data = HCII.wide,
+            zero.method="Pratt",
+            distribution="asympt")
+
+```
+
+
+
+### Summary: the different versions of the Wilcox test in R are:
+
+* Wilcox.test
+* wilcox.exact 
+* wilcoxsign_test(..., zero.method = c("Wilcoxon") 
+* wilcoxsign_test(..., zero.method = c("Pratt"))
+
+
+For basic info see
+http://www.statmethods.net/stats/nonparametric.html
+
+For the differnce between different functions for the test, see
+https://stat.ethz.ch/pipermail/r-help/2011-April/274931.html
+
+
+
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br>
+
+
+# Best analysis: ANCOVA
+
+
+## Plot data ANCOVA style
+
+```{r}
+qplot(y = ratio.after,
+      x = ratio.before,
+      color = group.ID,
+      data = HCII.wide) +
+  geom_smooth(method = lm,
+              se = FALSE) +
+  geom_abline(slope = 1,
+              intercept = 0)
+```
+
+
+## Run ANCOVA
+
+```{r}
+m.ancova <- lm(ratio.after ~ ratio.before + group.ID,
+           data = HCII.wide)
+```
+
+
+## Plot representing the ancova
+
+```{r}
+int <- coef(m.ancova)[1]
+slope <- coef(m.ancova)[2]
+norm.group.effect <- coef(m.ancova)[3]
+qplot(y = ratio.after,
+      x = ratio.before,
+      color = group.ID,
+      data = HCII.wide) + 
+  geom_abline(intercept = int, slope = slope,
+              color = "red") +
+  geom_abline(intercept = int+norm.group.effect, slope = slope,
+              color = "blue")
+```
+
+
+
+**CHALLENGE**
+
+* What do these parameters mean?
+    + The significane intercept isn't really relevant
+    + the "ratio.before" vraible is highly significant - what does this mean?
+    + the interaction term "group.IDgrp2.norm" is the effect of being in the 2nd treatment group (normal group)
+* Is there any evidence that the two groups behave differently over time
+
+
+
+
+# Original data
+
+Toulon et al 1987.  Antithrombin III and heparin cofactor II in patients with chronic renal failure undergoing regular hemodialysis.  Thrombosis Haemostasis 57.
+http://europepmc.org/abstract/med/3660328
+
+Original abstract:
+Heparin enhances the inhibition rate of thrombin by both antithrombin III (AT III) and heparin cofactor II (HC II). We studied the activity of these two plasma proteins in patients with chronic renal failure (CRF) undergoing regular hemodialysis as their heparin requirements varied widely. In 77 normal blood donors, normal ranges (mean +/- 2 SD) were 82-122% for AT III and 65-145% for HC II. When compared with these controls 82 dialyzed CRF patients had a subnormal AT III activity and a significantly (p less than 0.001) lower HC II activity. To evaluate the effect of hemodialysis we compared AT III, HC II and total proteins in plasma before and after dialysis in 24 patients (12 with normal and 12 with low basal HC II activity). AT III and HC II activities significantly (p less than 0.001) increased in absolute value. When related to total plasma proteins, in order to suppress the influence of hemoconcentration induced by dialysis, AT III decreased significantly (p less than 0.01) whereas HC II increased slightly but significantly (p less than 0.01) in the 12 patients with low initial HC II activity. The decrease of AT III induced by heparin administrated during dialysis is likely to account for this relative decrease of AT III activity. A modification of the distribution of both HC II and heparin between the vascular wall and the circulating blood is evoked to explain the relative increase in HC II activity and the need for higher heparin dosage in patients with low HC II levels.

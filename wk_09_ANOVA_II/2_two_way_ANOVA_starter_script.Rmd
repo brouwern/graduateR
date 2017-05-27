@@ -1,0 +1,73 @@
+---
+title: "Two-way ANOVA"
+author: "brouwern@gmail.com"
+date: "March 16, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1) Load 2-way data
+
+* file = simulated_2way_data.csv
+
+```{r}
+dat.2way <- read.csv("simulated_2way_data.csv")
+```
+
+## 2) Make some changes to the data
+
+This will help with plotting
+
+```{r}
+dat.2way$drug.A <- factor(dat.2way$drug.A,
+                          levels = levels(dat.2way$drug.A)[c(2,1)])
+
+dat.2way$drug.B <- factor(dat.2way$drug.B,
+                          levels = levels(dat.2way$drug.B)[c(2,1)])
+```
+
+
+```{r}
+#current factor leevels
+levels(dat.2way$Treatment.combo)
+
+#vector re-ordering the factor levels
+new.levs <- c("no.A/no.B","drug.A/no.B"
+              ,"no.A/drug.B","drug.A/drug.B")
+
+#reset the factor levels
+dat.2way$Treatment.combo  <- factor(dat.2way$Treatment.combo,
+                                    levels = c(new.levs))
+pd <- position_dodge(5)
+
+```
+
+
+
+## Contingency table
+```{r}
+with(dat.2way,
+     table(drug.A,
+           drug.B))
+```
+
+
+
+
+## 3) Plot data with CIs
+
+```{r}
+ggplot(aes(y=resp.cont,
+      x = Treatment.combo),
+      data = dat.2way) +
+ stat_summary(fun.data = "mean_se",
+             fun.args = list(mult = 1.96)) +
+  geom_jitter(width = 0.05,
+              aes(color = Treatment.combo)) +
+  xlab("Groups (Categorical)") +
+  ylab("Response variable (continous)") 
+```
+

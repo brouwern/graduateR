@@ -1,0 +1,49 @@
+---
+title: "Duq Lecture 1: t test on your own"
+author: "brouwern@gmail.com"
+date: "January 12, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## On your own: Is there a treatment effect in the replication?
+
+* Use data in replication.df and the t.test function to see if there is a significant difference.
+* Run with and without a log transformation 
+* Plot the logged data
+
+### t test
+```{r}
+t.test(response ~ trt,
+          data = replication.df)
+```
+
+
+### logged t-test
+```{r}
+t.test(log(response) ~ trt,
+          data = replication.df)
+```
+
+
+
+### Plot logged data
+```{r}
+#Replication data
+beeswarm(log(response) ~ trt,
+          data = replication.df , 
+         #ylim = c(0,9), 
+         add = F,
+         col = 3)# set ylim
+
+
+#Add means
+points(log(response.mean) ~ trt, data = my.means2, pch = 17,cex = 2, col = 3)
+```
+
+
+

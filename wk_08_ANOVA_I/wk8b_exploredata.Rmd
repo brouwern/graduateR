@@ -1,0 +1,546 @@
+---
+title: "Intro To ANOVA 2: Explore data with ggplot"
+author: "brouwern@gmail.com"
+date: "March 2, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = T)
+```
+
+# Outline
+
+* Plot data in boxplot wiht ggplot2:qplot
+* Explore functionality of qplot
+    + color, shape
+    + "jittering"
+* Change factor levels using factor()
+    + change "factor levels"
+    + change factor names/labels
+* Plot means
+
+# Make data that matches Nature Methods Paper
+
+```{r}
+y.column <- c(	11.24329808,	10.57397347,	8.798111146,	9.648373069,	10.16202242
+,	9.253887088,	11.51807329,	12.22480837,	8.797802989,	10.6733833,	12.38641145,	10.55536801,	10.83550408,	9.473762458,	11.8490472,	11.52501837,	10.02532039,	10.26283115,	9.541543832,	10.8289181,	10.61879171,	10.56255483,	10.12447501,	11.27377454,	8.985686839,	9.661441062,	9.337572633,	9.624627193,	9.562961301,	8.898324866,	9.033531311,	12.00679606,	10.80340919,	10.72436056,	10.39465146,	10.29051717,	11.32943119,	11.95522121
+,	12.59729367,	10.49891019,	9.58186603,	10.83069437,	9.639272696,	11.23721842,	10.25767478,	10.83731922,	10.46711202,	10.6520578,	11.90867276,	12.38906162,	11.33769377)
+
+n <- 17
+#create stacked dataframe
+dat <- data.frame(fluoro = y.column,
+                  treatment = c(rep("A",n),rep("C",n),rep("B",n)))
+
+#set factor levels
+dat$treatment <- factor(dat$treatment ,
+                        levels = c("A","C","B"))
+```
+
+# Histograms
+
+```{r}
+library(ggplot2)
+qplot(dat$fluoro)
+```
+
+
+
+
+Make panel a) in published figur
+
+
+```{r, fig.width = 4}
+library(ggplot2)
+qplot(fluoro,
+      geom = "density",
+      color = treatment,
+      data = dat)
+```
+
+
+CHange x axis limits
+
+```{r, fig.width =5}
+library(ggplot2)
+qplot(fluoro,
+      geom = "density",
+      color = treatment,
+      data = dat,
+      xlim = c(5,14.5))
+```
+
+
+
+# Create "facets"
+
+```{r, fig.width=4}
+library(ggplot2)
+qplot(fluoro,
+      geom = "density",
+      color = treatment,
+      data = dat,
+      xlim = c(7,14.5),
+      facets = . ~ treatment)
+```
+
+
+```{r, fig.width=5}
+library(ggplot2)
+qplot(fluoro,
+      geom = "density",
+      color = treatment,
+      data = dat,
+      xlim = c(7,14.5),
+      facets = treatment ~ .)
+```
+
+
+
+Add fill
+
+
+```{r}
+library(ggplot2)
+qplot(fluoro,
+      geom = "density",
+      color = treatment,
+      data = dat,
+      xlim = c(7,14.5),
+      fill = treatment,
+      facets = treatment ~ .)
+```
+
+
+
+
+# Boxplots
+
+## Raw data
+```{r, fig.width = 5}
+library(ggplot2)
+
+qplot(y = fluoro,
+      x = treatment,
+      data = dat)
+```
+
+
+## Boxplot
+
+* geom = "boxplot"
+
+```{r, fig.width = 5}
+library(ggplot2)
+
+qplot(y = fluoro,
+      x = treatment,
+      data = dat,
+      geom = "violin")
+```
+
+
+## Boxplot w/raw data overlay
+
+* Can include 2 geoms
+* geom = c("boxplot","point")
+    + note: must be "point", NOT "points" w/an "s"
+
+```{r, fig.width = 5}
+library(ggplot2)
+
+qplot(y = fluoro,
+      x = treatment,
+      data = dat,
+      geom = c("boxplot",
+               "point"))
+```
+
+
+
+## Change colors
+
+* color = treatment
+```{r, fig.width = 5}
+qplot(y = fluoro,
+      x = treatment,
+      data = dat,
+      geom = c("boxplot",
+               "point"),
+      color = treatment)
+```
+
+
+## Change point shape
+
+* shape = treatment
+```{r, fig.width = 5}
+qplot(y = fluoro,
+      x = treatment,
+      data = dat,
+      geom = c("boxplot",
+               "point"),
+      color = treatment,
+      shape = treatment)
+```
+
+
+
+## "jitter" points
+
+* geom = c(..., "jitter")
+
+```{r, fig.width = 5}
+qplot(y = fluoro,
+      x = treatment,
+      data = dat,
+      geom = c("boxplot",
+               "jitter"),
+      color = treatment,
+      shape = treatment)
+```
+
+
+
+## External geoms
+
+* remove geom = c(..., "jitter")
+* add geom_jitter() outside of qplot
+* note use of "+" sign
+
+```{r, fig.width = 5}
+qplot(y = fluoro,
+      x = treatment,
+      data = dat,
+      geom = c("boxplot"), #no jitter
+      color = treatment,
+      shape = treatment) + #note "+"
+  geom_jitter() # <=jitter added here
+```
+
+## Chaning amont of jitter
+
+* geom_jitter() takes the argument "width"
+
+```{r, fig.width = 5}
+qplot(y = fluoro,
+      x = treatment,
+      data = dat,
+      geom = c("boxplot"), #no jitter
+      color = treatment,
+      shape = treatment) + #note "+"
+  geom_jitter(width = 0.1) #jitter added here
+```
+
+
+
+
+# Setting factor levels
+
+* To faciliate comparisons, put our control "C" in the middle
+* the "treatment" columns is called a "categorical" variable
+* aka "factor" variable
+* A, B, C, are the "levels" or "factor levels"
+* R defaults to alphabetical order
+* we can "relevel" them
+
+
+Note the order when we use summary()
+```{r}
+summary(dat)
+```
+
+
+## relevel treatment factor
+
+* factor() takes two argument
+    + the column to convert
+    + the order that the EXISTING factor levels should be changed to
+
+```{r}
+dat$treatment <- factor(dat$treatment ,
+                        levels = c("A",
+                                   "C",
+                                   "B"))
+```
+
+
+Now look at summary
+```{r}
+summary(dat)
+```
+
+
+
+## Renaming factor levels
+
+* factor also has the argument "labels"
+* can change what each level is caleld
+
+```{r}
+dat$treatment <- factor(dat$treatment ,
+                        labels = c("treatment.A",
+                                   "treatment.C",
+                                   "treatment.B"))
+```
+
+
+use summary
+```{r}
+summary(dat)
+```
+
+
+Check out impact on plots
+```{r, fig.width = 5}
+library(ggplot2)
+
+qplot(y = fluoro,
+      x = treatment,
+      data = dat,
+      geom = "boxplot")
+```
+
+
+
+# Plots of means
+
+Plot means w/error bars in ggplot
+
+* We could do this by first summarizing the data 
+    + calculate mean
+    + calcualte sd
+    + calcualte se from sd
+    + make a table
+    + plot it
+* ggplot can do this all "on the fly"
+    + stat_summary
+    
+    
+
+# First - a function for the standard error
+
+* basic formula: se = sd/sqrt(n)
+* R code:        se = sd(x)/sqrt(n)
+
+```{r}
+se <- function(x){
+  n <- length(x)
+  sd(x)/sqrt(n)
+}
+```
+
+
+# The ggplot command
+
+Very powerful, a bit complex....
+
+* Key part: ggplot(data = ..., aes(....) )
+* the stuff that goes in aes(...) is really really important!
+* aes = "aesthetic"
+
+```{r, fig.width = 5}
+library(ggplot2)
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment))
+
+```
+
+## What happened?
+
+* qplot, you declare geoms inside the call to qplot
+    + qplot(, geom = c(...))
+    + default is geom = "point"
+* ggplot
+    + no default
+    + geoms go OUTSIDE of main ggplot call
+    + each geom has its own fuction
+    + ie, geom_point, geom_histogram, geom_boxplot
+    
+    
+
+# ggplot(...) + geom_point
+
+* note "+" outside of main ggplot() call
+
+```{r, fig.width = 5}
+library(ggplot2)
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment)) + #"+" 
+  geom_point()
+
+```
+
+
+
+## ggplot + geom_boxplot()
+
+
+```{r, fig.width = 5}
+library(ggplot2)
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment)) + #"+" 
+  geom_boxplot()
+
+```
+
+## ggplot + geom_boxplot() + geom_point()
+
+
+```{r, fig.width = 5}
+library(ggplot2)
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment)) + #"+" 
+  geom_boxplot() +
+  geom_point()
+
+```
+
+
+# Changing aesthetic
+
+
+## Changing global aesthetic
+
+* add "color = treatment" within the main ggplot aes()
+* note that BOTH boxplots AND point changed
+* with have set the aesthetic for ALL Of the "layers"
+
+```{r, fig.width = 5}
+library(ggplot2)
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment,
+           color = treatment)) + 
+  geom_boxplot() +
+  geom_point()
+
+```
+
+## Changing individual layer aesthetic
+
+### Change just boxplotes
+* add "color = treatment" w/in geom_boxplot()
+* boxes colored, points black!
+
+```{r, fig.width = 5}
+library(ggplot2)
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment)) + 
+  geom_boxplot(color = c("red","green","blue")) +
+  geom_point()
+
+```
+
+
+
+### Change just points
+* add "color = treatment" w/in geom_point()
+* boxes colored, points black!
+
+```{r, fig.width = 5}
+library(ggplot2)
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment)) + 
+  geom_boxplot() +
+  geom_point(aes(color = treatment,
+                 shape = treatment))
+
+```
+
+
+
+
+# geom stat_summary()
+
+* the deafults for stat_summary() are
+    + plot mean as a point
+    + plot error bars as +/- 1 se
+```{r, fig.width = 5}
+library(ggplot2)
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment)) + 
+  stat_summary() 
+
+```
+
+
+
+
+# To fully write out what the default
+
+* the stat_summary() function has an arguement
+    + fun.data = "mean_se"
+    
+
+```{r,fig.width = 5}
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment)) + 
+stat_summary(fun.data = "mean_se")
+```
+
+
+
+## Plotting 95% CIs
+
+* fun.data is a function with an argument "mult"
+* deafult is 1
+* so ggplot plots +/- 1*SE
+* what happens when we change this to 1.96?
+* requires a little bit of code...
+    + fun.args = list(mult = 1.96)
+    
+```{r,fig.width = 5}
+ggplot(data = dat, 
+       aes(y = fluoro, 
+           x = treatment)) + 
+stat_summary(fun.data = "mean_se",
+             fun.args = list(mult = 1.96))
+```
+
+
+
+
+
+# Make a function to make this easy
+```{r}
+easy.ggplot.ci <- function(dat, y, x, mult = 1){
+  ggplot(data = dat, 
+       aes(y = dat[,y], 
+           x = dat[,x])) + 
+stat_summary(fun.data = "mean_se",
+             fun.args = list(mult = mult)) +
+    xlab(x)+ylab(y)
+}
+```
+
+
+
+
+# Plot error bars as SE
+
+* the deafult is mult = 1
+* this gives us +/- 1*SE
+```{r,fig.width = 5}
+easy.ggplot.ci(dat = dat, 
+         y = "fluoro",
+         x = "treatment")
+```
+
+# Plot error bars as 95% CI
+
+* change mult = 1.96
+```{r,fig.width = 5}
+easy.ggplot.ci(dat = dat, 
+         y = "fluoro",
+         x = "treatment",
+         mult = 1.96) 
+```

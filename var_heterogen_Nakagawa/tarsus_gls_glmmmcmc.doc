@@ -1,0 +1,71 @@
+### Simple variance functions using gls and MCMC methods ##
+
+
+SparrowTarsusData <- read.csv("SparrowTarsusData.csv", header=T)
+
+
+
+## gls method ##
+
+library(nlme)
+
+m1 <- gls(AdTarsus~Sex+Treatment, weights=varIdent(form=~1|Sex*Treatment),data=SparrowTarsusData) ### Heteroscedastic model with the variance allowed to differ between sexes and treatments ##
+
+m2 <- gls(AdTarsus~Sex+Treatment, data=SparrowTarsusData) ## Standard model with homoscedasticity assumed ###
+
+anova(m1,m2) ## A simple comparison based on AIC shows that model m1 is prefered, althgouh only just ##
+
+
+summary(m1) ## Provides a summary of m1 including a description of the variance function. Note that the first paramter estimate, in this case female*control
+              is set a 1.0 by default in R, the variance in the remaining strata are then compared to this as a reference point. For example, the variance in the Female*Fed group is 1.28 times greater than that in the control*female group.
+              In contrast, the variance in the male*fed group is 0.57 times that in the control*female group.
+
+
+## MCMC method ##
+
+library(MCMCglmm)
+
+
+## Because this method uses MCMC techniques before we run the model we need to create a prior for the residual varaaince in the model.
+## We are modelling four strata in the data so we need to estimate a prior for the residual variance for each one.
+## Here we will use the estimated variance function from the m1 model above to create the prior.
+
+
+
+### Variance structure from m1:
+
+
+Variance function:
+ Structure: Different standard deviations per stratum
+ Formula: ~1 | SexN * Tmt 
+ Parameter estimates:
+ Female*0  Female*1    Male*1    Male*0 
+1.0000000 1.2847316 0.5771325 1.0811626 
+
+####
+
+ResidualVariance <- c(1,1.08,1.28,0.57) ## Creates prior for the residual variance structure, the numbers used here come from the variance structure created using the gls method m1 above ##
+                         
+
+
+heteroscedastic_prior <- list(R = list(V = diag(ResidualVariance), nu = 0.002)) ## Using the diag command here creates a 4 x 4 matrix with the prior expectations of the residual variance on the diagonal elements ##
+
+
+diag(ResidualVariance)
+
+     [,1] [,2] [,3] [,4]
+[1,]    1 0.00 0.00 0.00
+[2,]    0 1.08 0.00 0.00
+[3,]    0 0.00 1.28 0.00
+[4,]    0 0.00 0.00 0.57
+
+
+
+
+MCMC1<-MCMCglmm(AdTarsus ~ SexN+Tmt, rcov=~idh(SexN:Tmt):units,data=SparrowTarsusData, prior=heteroscedastic_prior) ##Heteroscedastic model with the residual variance allowed to differ between specifed strata in the data.
+
+MCMC2<-MCMCglmm(AdTarsus ~ SexN+Tmt, data=SparrowTarsusData) ## homoscedastic version of the model.
+
+
+################################################################
+

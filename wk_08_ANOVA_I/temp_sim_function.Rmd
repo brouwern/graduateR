@@ -1,0 +1,218 @@
+---
+title: "Untitled"
+author: "brouwern@gmail.com"
+date: "March 1, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Function to simulate 1-way ANOVA w/3 treatmets
+
+```{r}
+simulate.1way.anova <- function(){
+
+#simulate data
+dataC <- rnorm(n = n, 
+               mean = muC,
+               sd = s)
+
+dataA <- rnorm(n = n, 
+               mean = muA,
+               sd = s)
+
+dataB <- rnorm(n = n, 
+               mean = muB,
+               sd = s)
+
+#combine into a single column
+y.column <- c(dataA,dataC, dataB)
+
+
+
+#create trt labels
+trt.column <- c(rep("A",n),rep("C",n),rep("B",n))
+
+#create stacked dataframe
+dat <- data.frame(fluoro = y.column,
+                  treatment = trt.column)
+
+#set factor levels
+dat$treatment <- factor(dat$treatment ,
+                        levels = c("A","C","B"))
+
+
+return(dat)
+} #close function
+
+```
+
+
+# Test function
+
+```{r}
+dat1 <- simulate.1way.anova()
+```
+
+
+#Make many fake datasets
+```{r}
+dat <- matrix(NA,nrow = 17*3, ncol = 50000)
+
+for(i in 1:dim(dat)[2]){
+  dat[,i] <- simulate.1way.anova()$fluoro
+
+}
+
+```
+
+
+
+```{r}
+#matrix to hold p valeus
+p.dat <- matrix(NA, 
+                nrow = 4,
+                ncol = dim(dat)[2])
+
+#calc p valeus
+for(i in 1:dim(dat)[2])
+{
+  
+  p.out <- pairwise.t.test(x = dat[,i],
+                g = dat1$treatment,
+                pool.sd = FALSE,
+                p.adjust.method = "none")
+
+  p.out <- p.out$p.value
+  
+  p.dat[,i] <- p.out
+}
+```
+
+
+#round p values
+```{r}
+p.dat2 <- apply(p.dat,2,round,3)
+```
+
+
+#Look at output
+```{r}
+p.dat2[,c(1:10)]
+```
+
+
+# Target p values
+```{r}
+p.target <- matrix(data = c(0.18,0.27,
+                            NA,0.009),
+                   nrow = 2, 
+                   byrow = F,
+                   dimnames = list(c("C","B"),
+                                   c("A","C")))
+```
+
+
+## look for match
+```{r}
+test.TF.out <- NA
+
+for(i in 1:dim(p.dat2)[2])
+{
+  test.TF <- p.dat2[,i] == as.vector(p.target)
+  test.TF <- na.omit(test.TF)
+  test.TF.out[i] <- length(which(test.TF == "TRUE"))
+}
+```
+
+
+# how many matches?
+```{r}
+test.TF.out[which(test.TF.out > 1)]
+```
+
+
+```{r}
+p.dat2[,which(test.TF.out > 1)]
+write.csv(dat[,which(test.TF.out > 1)[2]],file = "temp.csv")
+```
+
+
+```{r}
+i.TRUE <- which(test.TF.out == TRUE)
+```
+
+
+
+
+
+```{r}
+p.dat2[,i.TRUE]
+dat[,i.TRUE]
+```
+
+
+
+
+
+```{r}
+p.out <- pairwise.t.test(x = dat1$fluoro,
+                g = dat1$treatment,
+                pool.sd = FALSE,
+                p.adjust.method = "none")
+
+
+p.out <- p.out$p.value
+
+```
+
+
+
+
+
+
+
+```{r}
+p.target == p.out
+```
+
+
+
+```{r}
+
+
+i.AB <- which(dat$treatment %in% c("A","B"))
+i.AC <- which(dat$treatment %in% c("A","C"))
+i.BC <- which(dat$treatment %in% c("B","C"))
+
+
+
+t.test.AvsB <- t.test(fluoro ~ treatment, 
+       dat = dat,
+       subset = i.AB)
+
+t.test.AvsC <- t.test(fluoro ~ treatment, 
+       dat = dat,
+       subset = i.AC)
+
+
+t.test.BvsC <- t.test(fluoro ~ treatment, 
+       dat = dat,
+       subset = i.BC)
+
+
+
+
+pAvsB <- t.test.AvsB$p.value
+pAvsC <- t.test.AvsC$p.value
+pBvsC <- t.test.BvsC$p.value
+
+p.out <-
+}
+
+
+
+```
+

@@ -1,0 +1,498 @@
+---
+title: "Untitled"
+author: "brouwern@gmail.com"
+date: "April 27, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 
+# Vocab
+
+* exponential family of distributions
+    + normal/gaussian: 
+    + binomial: 0/1, yes/no, present/absent, successes/trials
+    + poisson: counts
+    + negative binomial: counts (neither negative, nor binomial)
+    + gamma: data w/positive skew
+    + beta (?): not exponential
+* link function
+* inverse link function
+* cannonical link function
+* odds ratio
+* log odds ratio
+* rate ratio
+* back transformation of coefficients
+
+
+
+
+# Load data
+
+```{r}
+marbles <- read.csv("Lazic_weight_marbles.csv")
+```
+
+
+
+```{r}
+library(ggplot2)
+ggplot(aes(y = marbles,
+      x = weight),
+      data = marbles) +
+  geom_smooth(method = glm,se = FALSE,
+              method.args = list(family = "poisson"),
+              size = 2) +
+  geom_point(aes(color = sex, shape = sex),size =3)
+```
+
+# Distributions
+
+
+## Normal
+
+code for curve:
+http://stackoverflow.com/questions/6967664/ggplot2-histogram-with-normal-curve
+
+```{r}
+par(mfrow = c(1,1))
+marbles <- read.csv("Lazic_weight_marbles.csv")
+marbles.noNA <- na.omit(marbles)
+i.females <- which(marbles.noNA$sex == "Female")
+marbles.noNA.f <- marbles.noNA[i.females,]
+library(ggplot2);library(cowplot);library(plyr)
+
+
+
+
+
+mean(marbles.noNA.f$weight)
+sd(marbles.noNA.f$weight)
+
+```
+
+
+```{r}
+binwidth <- 1
+qplot(weight,
+      data =marbles.noNA.f) + 
+  geom_vline(xintercept = mean(marbles.noNA.f$weight),
+             color = "red", 
+             size = 3) +
+  xlim(0,25)+
+  stat_function( 
+    fun = function(x, mean, sd, n, bw){ 
+      dnorm(x = x, mean = mean, sd = sd) * n * bw
+    }, 
+    args = c(mean = mean(marbles.noNA.f$weight), 
+             sd = sd(marbles.noNA.f$weight), 
+             n = dim(marbles.noNA.f)[1], 
+             bw = binwidth))
+```
+
+
+
+
+## Poisson
+
+
+Raw data
+```{r}
+mean(marbles.noNA.f$marbles)
+table(marbles.noNA.f$marbles)
+sd(marbles.noNA.f$marbles)
+var(marbles.noNA.f$marbles)
+
+qplot(marbles,
+      data =marbles.noNA.f) + 
+  geom_vline(xintercept = mean(marbles.noNA.f$marbles),
+             color = "red", 
+             size = 3) 
+```
+
+
+## count data w/normal density
+
+```{r}
+binwidth <- 2
+qplot(marbles,
+      data =marbles.noNA.f) + 
+  geom_vline(xintercept = mean(marbles.noNA.f$marbles),
+             color = "red", 
+             size = 3) +
+  stat_function( 
+    fun = function(x, mean, sd, n, bw){ 
+      dnorm(x = x, mean = mean, sd = sd) * n * bw
+    }, 
+    args = c(mean = mean(marbles.noNA.f$marbles), 
+             sd = sd(marbles.noNA.f$marbles), 
+             n = dim(marbles.noNA.f)[1], 
+             bw = binwidth),
+    size = 2,
+    color = "blue") +
+  xlim(-5,10)
+```
+
+
+
+## count data w/ poisson
+```{r}
+binwidth <- 2
+x <- 0:10
+y <- dpois(seq(0,10), lambda = mean(marbles.noNA.f$marbles))
+df<-data.frame(x,y)
+qplot(marbles,
+      data =marbles.noNA.f) + 
+  geom_vline(xintercept = mean(marbles.noNA.f$marbles),
+             color = "red", 
+             size = 3) +
+geom_line(aes(y = y*30,x =x),data = df,
+          color = "blue",size = 3)
+```
+
+
+
+
+## count data w/ negative binomial
+```{r}
+binwidth <- 2
+x <- 0:10
+y <- dnbinom(seq(0,10), 
+             mu = 1.2321,
+             size = 1.244)
+df<-data.frame(x,y)
+qplot(marbles,
+      data =marbles.noNA.f) + 
+  geom_vline(xintercept = mean(marbles.noNA.f$marbles),
+             color = "red", 
+             size = 3) +
+geom_line(aes(y = y*15,x =x),data = df,
+          color = "blue",size = 3)
+```
+
+
+
+
+
+# A poisson model
+
+```{r}
+
+glm.pois.mean <- glm(marbles ~ weight, 
+          data = marbles,
+          family = poisson(link = "log"))
+
+
+
+summary(glm.pois.mean)
+
+```
+
+# Overdispersion test
+
+```{r}
+
+deviance(glm.pois.mean)/glm.pois.mean$df.residual
+
+
+
+library(AES)
+dispersiontest(glm.pois.mean)
+
+
+```
+
+
+# Accomodating overdispersion
+
+## Quasi poisson
+
+```{r}
+
+glm.quasipois.mean <- glm(marbles ~ weight, 
+          data = marbles,
+          family = quasipoisson)
+
+
+
+summary(glm.quasipois.mean)
+```
+
+
+
+## negbin
+
+```{r}
+library(MASS)
+glm.neginb.mean <- glm.nb(marbles ~ weight, 
+          data = marbles)
+
+
+summary(glm.neginb.mean)
+
+```
+
+
+
+
+# Individual random effct
+```{r}
+
+library(lme4)
+marbles$row.ID <- 1:dim(marbles)[1]
+glmm.indranef <- glmer(marbles ~ weight + (1|row.ID), 
+                      family = poisson,
+                      data = marbles)
+
+
+summary(glmm.indranef)
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+## Re-code for logistic regression
+
+```{r}
+marbles$marbles01 <- ifelse(marbles$marbles > 0,1,0)
+
+max(marbles$marbles)
+
+
+glm.binom <- glm(cbind(marbles, 16) ~ weight, 
+                                      data = marbles, 
+                                      family = binomial)
+
+
+summary(glm.binom)
+
+```
+
+
+
+
+
+## Binomial glm
+
+
+```{r}
+glm()
+```
+
+
+# Logistic regression - categoricalv ariables
+
+
+```{r}
+mat <- as.matrix(table(marbles$marbles01,
+      marbles$sex))
+
+mat
+chisq.test(mat,correct = F)
+```
+
+
+
+```{r}
+
+
+logit.sex <- glm(marbles01 ~ sex, 
+               family = binomial,
+               data = marbles)
+
+anova(logit.sex,
+      test = "Rao")
+```
+
+
+# Logistic regression - continous variables
+```{r}
+#remove NAs
+marbles.noNA <- na.omit(marbles)
+
+#Run model
+logit.weight <- glm(marbles01 ~ weight, 
+               family = binomial,
+               data = marbles.noNA)
+
+
+#test model
+anova(logit.weight,
+      test="Chisq")
+
+anova(logit.weight,
+      test="LRT")
+
+confint(logit.weight)
+
+
+```
+
+
+
+
+# predictions
+
+```{r}
+
+marbles.noNA$prediction.logit <- predict.glm(logit.weight)
+
+
+SE.out <- predict.glm(logit.weight,
+                      se.fit = TRUE)
+
+marbles.noNA$prediction.SE <- SE.out$se.fit
+
+
+
+
+
+marbles.noNA$prediction.prob <- predict.glm(logit.weight,
+                                             type = "response")
+
+marbles.noNA$SE.lo <- invlogit(marbles.noNA$prediction.logit -
+                               1.96*marbles.noNA$prediction.SE )
+
+marbles.noNA$SE.up <- invlogit(marbles.noNA$prediction.logit +
+                               1.96*marbles.noNA$prediction.SE )
+
+
+
+
+
+
+
+```
+
+
+
+```{r}
+ggplot(aes(y =  prediction.prob,
+          x = weight),
+      data = marbles.noNA) +
+  geom_line(size = 4, color = "blue")  +
+  geom_line(aes(y=SE.up,
+                x = weight)) +
+  geom_line(aes(y=SE.lo,
+                x = weight)) +
+  geom_hline(yintercept = 1,linetype = 2)
+```
+
+
+
+
+# Look for overdispersion
+```{r}
+quasilogit.weight <- glm(marbles01 ~ weight, 
+               family = quasibinomial,
+               data = marbles.noNA)
+
+```
+
+
+
+```{r}
+summary(logit.m1)
+```
+
+
+
+
+
+
+# Easy logistic regression plot
+
+## One continous predictor variable
+```{r}
+library(ggplot2)
+
+qplot(y = marbles01,
+      x = weight,
+      data = marbles) +
+  geom_point(size = 3) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"),
+              se = FALSE) +
+  xlab("Continous covariate: weight") +
+  ylab("Binary response: 0 or 1") +
+  ggtitle("Logistic regression with continuous covariate")
+
+```
+
+
+## One continous and one categorical variable
+
+Discrete groups can be split up by defining a color
+```{r}
+library(ggplot2)
+
+qplot(y = marbles01,
+      x = weight,
+      color = drug,
+      linetype = drug,
+      data = marbles) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"),
+              se = FALSE) +
+  xlab("Continous covariate: weight") +
+  ylab("Binary response: 0 or 1") +
+  ggtitle("Logistic regression plot with ggplot2")
+
+```
+
+
+
+
+## One continous and multiple categories
+
+Combining categorial variables allows you to plot further interactions.
+
+
+```{r}
+library(ggplot2)
+
+marbles$group.x.drug <- with(marbles,
+                           paste(group,
+                                 drug,
+                                 sep = "."))
+
+qplot(y = marbles01,
+      x = weight,
+      color = group.x.drug,
+      linetype = group.x.drug,
+      data = marbles,
+      facets = group ~ drug) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"),
+              se = FALSE) +
+  xlab("Continous covariate: weight") +
+  ylab("Binary response: 0 or 1") +
+  ggtitle("Logistic regression plot with ggplot2") +
+  
+
+```
+
+
+
+
+
+
+
+
+
+
+
+

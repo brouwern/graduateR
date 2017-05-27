@@ -1,0 +1,47 @@
+## Modelling the badge size of male house sparrows with HCSE estimators ##
+
+
+
+## Load the sparrow badge size dataset ##
+
+SparrowData <- read.csv("SparrowBadgeData.csv", header=T)
+str(SparrowData)
+
+
+## Load required libraries ##
+
+library(sandwich)
+library(lmtest)
+
+###
+
+## Perform the OLS regression ##
+
+m1<- lm(Badge1 ~ Age + Weight + WingLength + HatchNo, data=SparrowData)
+
+summary(m1)
+
+## Plot the residuals from the model to look for heteroscedasticity ##
+
+plot(residuals(m1), pch=19)
+plot(residuals(m1) ~ fitted(m1), pch=19)
+
+
+## Breusch-Pagan Test ##
+
+bptest(m1)
+
+## Same model, but with the HC3 and HC4 estimators ##
+
+coeftest(m1, vcov = vcovHC(m1, method = "HC3")) ## For the HC3 estimator
+
+coeftest(m1, vcov= vcovHC(m1, method="HC4")) ## For the HC4 estimator
+
+
+
+
+
+
+
+
+

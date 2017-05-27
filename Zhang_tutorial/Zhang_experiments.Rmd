@@ -1,0 +1,797 @@
+---
+title: "Matching Statistics to Experimental Designs"
+author: "brouwern@gmail.com"
+date: "March 22, 2017"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, message = FALSE, warning = FALSE,fig.width = 3)
+```
+
+
+# Matching Statistics to Experimental Designs
+
+## Introduction (this is all true):
+
+Heat [shock proteins (Hsps)](https://en.wikipedia.org/wiki/Heat_shock_protein) are part of plants' adaptive response to thermal stress.  Researchers are interested in their genetics, biochemistry, and ecology to better understand basic plant biology and inform crop breeding and management under the threat of climate change.
+
+Zhang et al. (2015) summarize the importance of Hsps:
+
+>"Heat causes protein denaturation, disrupting normal protein function. The Hsps act as molecular chaperons to prevent protein aggregation, repair protein damage and maintain cellular homeostasis. Hsps stabilize protein form and prevent aggregation. The Hsps together recover or protect normal cellular function provided that the heat stress is not too extreme."
+
+[Zhang et al. (2015)](https://academic.oup.com/aobpla/article/doi/10.1093/aobpla/plv101/1801891/Natural-populations-of-Arabidopsis-thaliana-differ) studied how expression of Hsps in [Arabidopsis thaliana](https://en.wikipedia.org/wiki/Arabidopsis_thaliana) seedlings was impacted by previous exposure to high temperatures.  In particular, they wanted to study "acquired thermotolerance" by testing whether acclimation at a moderately high temperature (38 degrees C; 100 F) resulted in higher production of Hsp when plants were subsequently exposed to an extreme temperature (45 degrees C; 113 F).  **Control plants** received no acclimation but were subjected directly to 45 C for 3 hours.  **Aclimization Treatment** plants experienced 3 hours of acclimization at 38 degrees C, 3 hours of recovery at a lower temperature, then 3 hours of 45 C.  At the end of the experiment leaf tissue was collected from plants and Hsp production was quantified using western blots.  
+
+Zhang uses both lab strains of Arabidopsis and also strains derived from native populations along an altitudinal transect from the Mediterrean Ocean up into the Spanish Pyrennes.  Zhang has also done transcriptomic work [(Zhang et al pre-print)](http://www.biorxiv.org/content/early/2016/03/18/044446) to see what genes are upregulated and therefore might be related to Hsp production.  The following experiments are based on this general design.
+
+<br><br>
+
+# Hypothetical Context (none of this is true):
+
+Let's imagine that when Zhang began her work on Hsp she ran a number of pilot studies to work out the experimental conditions.  In particular, she had to work on the apparatus she used to bring the plants up to 45 C (113 F).  She initially started with a small apparatus that fit on her lab benches that housed a single plant, and later acquired grant money to buy bigger environmental chambers.  Let's also imagine that her transcriptomic work identified an interesting gene, *hsp1*, linked to Hsp expression.  We'll consider several variations on these experiments. 
+
+# References
+Zhang et al 2015.  Natural populations of Arabidopsis thaliana differ in seedling responses to high-temperature stress.  AoB Plants.
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## EXPERIMENT 1: Impact of heat stress on Hsp, trial 1 
+
+```{r,  include=FALSE}
+#[independent samples; 2 sample t-test]
+```
+
+### Experimental Design:
+In her 1st experiment, Zhang used 3 plants  as controls and 3 plants were given an acclimatization treatment.  Each plant was subject to the high temperature conditions using special bench-top environmental chambers that house a single plant.  A single tissue sample was taken from each plant and Hsp production quantified using western blots.  There are therefore 6 total samples (3 controls + 3 acclimatized). 
+
+```{r,  include=FALSE}
+#[extension Hsp ~ hsp regression]
+```
+
+
+```{r, include =F}
+# Make the data
+
+## Means Similar to Zhang et al 2015 AoB
+means <- c(1, 2.5)
+SD <- 1
+n <- 3
+
+## label vector of means
+names(means) <- c("control","acclim")
+
+# create treatment labels
+trt.labels <- c(rep("control",n),
+                rep("acclim",n))
+
+#turn into datafrmae
+trt.labels <- data.frame(treatment = trt.labels)
+
+#reorder treatment factors
+trt.labels$treatment <- factor(trt.labels$treatment,
+                     levels = c("control","acclim"))
+
+#determine number of factor levels
+levs <- length(levels(trt.labels$treatment))
+
+#calcualte total sample size
+tot.n <- n*levs
+
+#build model matrix
+mm <- model.matrix(~-1 + treatment, trt.labels)
+
+#simulate data
+
+## set seed
+set.seed(123)
+
+## make dataframe
+x <- mm %*% means + rnorm(n = tot.n,mean = 0,sd = SD)
+
+
+# finalize dataframe
+dat.expt1 <- cbind(Hsp.express = x, 
+                   trt.labels)
+
+
+#save data
+write.csv(dat.expt1, file = "experiment1.csv")
+
+```
+
+
+### Experiment 1 Data
+```{r,echo = F}
+library(pander)
+pander(dat.expt1,
+       caption = "Experiment 1 data")
+```
+
+```{r,echo = F}
+library(ggplot2); library(cowplot)
+ggplot(data = dat.expt1,
+       aes(y = Hsp.express,
+           x = treatment)) +
+  stat_summary(fun.data = "mean_se",
+               fun.args = list(mult = 1.96)) +
+  annotate(geom = "text",x = 1,y = 3.75,
+           label ="Error bars = 95% CI") +
+  ggtitle("Experiment 1 means")
+```
+
+### Experiment 1 Analysis
+
+* There are 2 R functions that can be used to analyze these data that will provide very similar anaswers, what are they?
+* Use the more typical of the 2 to analyze the data
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+### Experiment 1 ANalysis: Answers
+
+* These data would typically be analyzed with a **t-test**, specifically a 2-sample t-test. 
+* Very similar results can also be obtained using the lm() function
+* However, lm() cannot use Welch's correction for unequal variance
+* If unequal variance is a concern, you can use nlme::gls()
+* The data were simulate with equal variances so this not an issue.
+
+#### 2-sample t-test with t.test.
+```{r, eval=FALSE, include=FALSE}
+dat.expt1 <- read.csv("experiment1.csv")
+t.test(Hsp.express ~ treatment, 
+       data = dat.expt1)
+```
+
+
+#### 2-sample t-test with lm()
+
+* Note: no correction for unequal variance
+```{r, eval=FALSE, include=FALSE}
+lm1 <- lm(Hsp.express ~ treatment, 
+       data = dat.expt1)
+
+summary(m1)
+```
+
+
+#### 2-sample t-test with gls()
+
+```{r}
+library(nlme)
+gls1 <- gls(Hsp.express ~ treatment, 
+       data = dat.expt1,
+       weights = varIdent( form = ~1|treatment))
+
+summary(gls1)
+```
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+
+## EXPERIMENT 2: Impact of heat stress on Hsp, trial 2 
+
+```{r, include =F}
+#[nested sub samples; average subsamples or nested ANOVA]
+```
+
+In this experiment, Zhang took multiple samples from each individual plant, instead of just 1.  As in EXPERIEMNT 1, 3 plants were used as controls and 3 plants were acclimatized at 38 degrees C.  As before, each plant was subject to high temperature conditions using special bench-top environmental chambers that house a single plant.  After exposure to heat stress at 45 degrees C, 3 samples were taken from each plant.  (18 samples total; 3 * 3 = 9 controls, 3 * 3 = 9 acclimatized)
+
+
+
+```{r, include =F}
+# Make the data
+int.trt.effect <- c(1, 1.5)
+
+#6 plants, but plant 1 gets folded into intercept
+## This is not strictly a correct way to 
+## do this but its good enough
+## for my purposes
+
+set.seed(123)
+plant.means <- rnorm(n = 5,
+                     mean = 0,
+                     sd = 0.5)
+
+#vector of parameters
+## fiexed effects
+## individual plant means
+params <- c(int.trt.effect,
+            plant.means)
+
+SD <- 1
+n <- 9
+
+trt.labels <- c(rep("control",n),
+                rep("acclim",n))
+
+#ID numbers for plants
+plant.ID <- c(1,1,1,
+              2,2,2,
+              3,3,3,
+              4,4,4,
+              5,5,5,
+              6,6,6)
+
+trt.labels <- data.frame(treatment = trt.labels,
+                         plant.ID)
+
+trt.labels$treatment <- factor(trt.labels$treatment,
+                     levels = c("control",
+                                "acclim"))
+
+trt.labels$plant.ID <- factor(trt.labels$plant.ID )
+
+
+tot.n <- dim(trt.labels)[1]
+
+mm <- model.matrix(~treatment + plant.ID, trt.labels)
+
+set.seed(321)
+x <- mm %*% params + rnorm(n = tot.n,mean = 0,sd = SD)
+x <- ifelse(x < 0,0,x)
+dat.expt2 <- cbind(Hsp.express = x,
+                   trt.labels)
+
+
+write.csv(dat.expt2, file = "experiment2")
+```
+
+
+
+### Experiment 2 Data
+```{r,echo = F}
+library(pander)
+
+## Normal dataframe view
+#pander(dat.expt2,caption = "Experiment 2: 3 samples per plant")
+
+#wide view to save space
+dummy.column <- rep("",9)
+d.wide <- cbind(dat.expt2[1:9,],
+      dummy.column,
+dat.expt2[10:18,])
+
+names(d.wide)[4] <- ""
+
+pander(d.wide,
+       caption = "Experiment 2: 3 samples per plant")
+
+```
+
+```{r,echo = F}
+library(ggplot2); library(cowplot)
+ggplot(data = dat.expt2,
+       aes(y = Hsp.express,
+           x = treatment)) +
+  stat_summary(fun.data = "mean_se",
+               fun.args = list(mult = 1.96)) +
+  annotate(geom = "text",x = 1,y = 3.75,
+           label ="Error bars = 95% CI") +
+  ggtitle("Experiment 2: Overall means")
+```
+
+
+### Experiment 2 Analysis
+
+* These data should not be analyzed directly with a t-test.  Why?
+* Implement a correct analysis
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+### Experiment 1 Analysis: Answers
+
+Analysis with a t-test or lm() is inccorect because it ignores the nesting of the data.  Each plant is sampled 3 times and does not represent an indepedendnet replicate of the experimental treatmetns.
+
+#### Incorrect analysis
+
+```{r, include =F}
+# Naive models
+
+## t-test
+t.test(Hsp.express ~ treatment, data = dat.expt2,
+       var.equal = T)
+
+## t-test
+anova(lm(Hsp.express ~ treatment, data = dat.expt2))
+
+```
+
+
+#### Correct analysis 1: summarize each plant's measurements
+
+Calcualte the mean of each seperate plant.
+```{r, include =F}
+library(doBy)
+plant.means <- summaryBy(Hsp.express ~ 
+                           plant.ID + 
+                           treatment, 
+                         data = dat.expt2)
+```
+
+
+Correct analyses on the means
+```{r, include =F}
+## t.test
+t.test(Hsp.express.mean ~ treatment, data = plant.means,
+       var.equal = T)
+
+## lm
+lm.1 <- lm(Hsp.express.mean ~ treatment, data = plant.means)
+
+summary(lm.1)
+```
+
+
+#### Correct analysis 2: use aov() to do nested ANOVA
+
+* aov() synatx is identialca to lm()
+* aov() only works well for balanced data;
+    + eg, if 
+
+```{r}
+aov.2 <- aov(Hsp.express ~ treatment + Error(plant.ID), 
+             data = dat.expt2)
+
+
+summary(aov.2)
+```
+
+
+#### Correct analysis 3: use a mixed model
+
+You can use either nlme::lme or lme4::lmer and will get similar results.
+
+##### nlme::lme
+```{r}
+library(nlme);library(car);library(pbkrtest)
+
+nlme.2.REML <- lme(Hsp.express ~ treatment,
+           random = ~1|plant.ID,
+          data = dat.expt2,
+          method = "REML")
+
+nlme.2.ML <- lme(Hsp.express ~ treatment,
+           random = ~1|plant.ID,
+          data = dat.expt2,
+          method = "ML")
+
+anova(nlme.2.REML)
+Anova(nlme.2.REML,
+      type = "III",
+      test.statistic = "F")
+
+anova(nlme.2.ML)
+
+```
+
+
+#### lme4::lmer
+```{r}
+## lmer
+library(lme4);library(car)
+lmer.2.REML <- lmer(Hsp.express ~ treatment + 
+             (1|plant.ID), 
+           data = dat.expt2,
+           REML = T)
+
+lmer.2.ML <- lmer(Hsp.express ~ treatment + 
+             (1|plant.ID), 
+           data = dat.expt2,
+           REML = F)
+
+KRmodcomp(lmer.2.REML)
+
+Anova(lmer.2.REML, test.statistic = "F")
+Anova(lmer.2.REML, test.statistic = "Chisq")
+
+Anova(lmer.2.ML, test.statistic = "Chisq")
+
+
+
+lmer.2.null.ML <- lmer(Hsp.express ~ 1 + 
+             (1|plant.ID), 
+           data = dat.expt2,
+           REML = F)
+
+KRmodcomp(lmer.2.ML,lmer.2.null.ML)
+
+
+```
+
+
+
+```{r}
+#### Correct analysis 4: manova
+
+# MANOVA should be the same but p value is much bigger  - ???
+
+# library(reshape2)
+# dat.expt2$rep <- rep(1:3)
+# dat.wide <- dcast(data = dat.expt2,
+#       formula =  treatment + plant.ID ~ rep,
+#       value.var = "Hsp.express",
+#       fun.aggregate = sum)
+# 
+# names(dat.wide)[3:5] <- paste("plant",names(dat.wide)[3:5], sep = ".")
+# 
+# manova.2 <- manova(cbind(plant.1,plant.2,plant.3) ~ treatment, 
+#                    data = dat.wide)
+# 
+# summary(manova.2)
+
+```
+
+
+
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## EXPERIMENT 3: Impact of heat stress on Hsp, trial 3 
+
+```{r, echo = F}
+#[simple blocking; paired t-test]
+```
+
+Zhang wants to run more samples and modifies her bench-top environmental chamber to house 2 plants at a time.  She therefore puts one control plant (no acclimatization) and one acclimatized plant into each of her new chambers.  One plant from each treatment is therefore in each chamber.   She has 6 chambers and so has 6 x 2 = 12 total plants (6 control plants, 6 acclimatized). 
+
+```{r, echo = F}
+#[extension 1 - blocking w/ subsampling; extension 2: 3 treatments w/in block, such as C, aclim temp 1, aclim temp 2]
+```
+
+
+```{r, include =F}
+# Make the data
+int.trt.effect <- c(1,1.5)
+
+#6 champbers, but chamber 1 get folded into intercept
+set.seed(123)
+chamber.means <- rnorm(n = 5,
+                     mean = 0,
+                     sd = 1)
+
+params <- c(int.trt.effect,
+            chamber.means)
+
+SD <- 1
+n <- 6
+
+trt.labels <- c(rep("control",n),
+                rep("acclim",n))
+chamber.ID <- rep(c(1,2,3,4,5,6),2)
+
+trt.labels <- data.frame(treatment = trt.labels,
+                         chamber.ID)
+
+trt.labels$treatment <- factor(trt.labels$treatment,
+                     levels = c("control","acclim"))
+
+trt.labels$chamber.ID <- factor(trt.labels$chamber.ID )
+
+
+tot.n <- dim(trt.labels)[1]
+
+mm <- model.matrix(~treatment + chamber.ID, trt.labels)
+
+set.seed(123)
+x <- mm %*% params + rnorm(n = tot.n,mean = 0,sd = SD)
+x <- ifelse(x < 0,0,x)
+dat.expt3 <- cbind(Hsp.express = x,
+                   trt.labels)
+
+write.csv(dat.expt3, file  = "experiment3.csv")
+```
+
+
+```{r, include =F}
+library(reshape2)
+
+dat.expt3.wide <- dcast(data = dat.expt3,
+                        formula = chamber.ID ~ treatment,
+                        value.var = "Hsp.express",
+                        fun.aggregate = sum)
+```
+
+## Experiment 3 data
+```{r, echo = F}
+pander(dat.expt3.wide,
+       caption = "Experiment 3 data")
+```
+
+
+
+## Experiment 3 incorrect plot: treatment means
+
+
+
+* This plot does not represent the structure of the experiment; why?
+
+```{r, echo=FALSE}
+library(ggplot2); library(cowplot)
+ggplot(data = dat.expt3,
+       aes(y = Hsp.express,
+           x = treatment)) +
+  stat_summary(fun.data = "mean_se",
+               fun.args = list(mult = 1.96)) +
+  annotate(geom = "text",x = 1,y = 3.75,
+           label ="Error bars = 95% CI") +
+  ggtitle("Experiment 2: Overall means")
+```
+
+
+## Experiment 3 correct plot
+
+* What feature of this plot makes it a good representation of this experiment?
+
+```{r, echo=FALSE}
+ggplot(data = dat.expt3,
+       aes(y = Hsp.express,
+           x = treatment,
+           group = chamber.ID,
+           color = treatment,
+           shape = treatment)) +
+  geom_point(size = 3) +
+  geom_line(aes(color = chamber.ID))
+```
+
+
+
+### Experiment 3 Analyses
+
+
+### Experiment 3 Analyses: Answers
+
+#### Correct answer 1: paired t-test
+
+THis would be the typical approach
+```{r}
+dat.expt3 <- read.csv("experiment3.csv")
+
+#Paired t-test
+t.test(Hsp.express~ treatment, data = dat.expt3, paired = T)
+
+```
+
+
+
+#### Correct answer 2: lm on difference
+
+This accomplishes the same thing.  A t-test can be formulated as a type of linear model or regression.
+
+```{r, include =F}
+#reshape data
+library(reshape2)
+dat.expt3.wide <- dcast(data = dat.expt3,
+                        formula = chamber.ID ~ treatment,
+                        value.var = "Hsp.express",
+                        fun.aggregate = sum)
+#calculate difference
+dat.expt3.wide$diff <- dat.expt3.wide$control-
+                       dat.expt3.wide$acclim
+
+lm.3 <- lm( diff ~ 1, data =  dat.expt3.wide)
+
+summary(lm.3)
+
+```
+
+
+#### Correct answer 3: aov() 
+
+```{r}
+aov.3 <- aov( Hsp.express ~ treatment + 
+               Error(chamber.ID), 
+             data =  dat.expt3)
+
+summary(aov.3)
+
+```
+
+
+#### Correct answer 4: lmer()
+
+```{r}
+library(lme4)
+lmer.3.REML <- lmer(Hsp.express ~ treatment +
+                 (1|chamber.ID),
+               data = dat.expt3,
+               REML = TRUE)
+
+lmer.3.ML <- lmer(Hsp.express ~ treatment +
+                 (1|chamber.ID),
+               data = dat.expt3,
+               REML = FALSE)
+
+Anova(lmer.3.REML,
+      test.statistic = "F")
+
+Anova(lmer.3.REML,
+      test.statistic = "Chisq")
+
+
+Anova(lmer.3.ML,
+      test.statistic = "Chisq")
+
+
+
+m.null <- lmer(Hsp.express ~ 1 + (1|chamber.ID), data = dat.expt3)
+m.alt  <- lmer(Hsp.express ~ treatment + (1|chamber.ID), data = dat.expt3)
+
+anova(m.null, 
+      m.alt)
+
+```
+
+
+
+
+
+
+<br><br><br><br>
+
+## EXPERIMENT 4: HSP as temperature changes 
+
+```{r,include =F}
+#[regression/ANCOVA]
+```
+
+
+One of Zhang's committee members tells her that she should know what happens at other stressful temperatures besides 45 degrees.  She therefore runs an experiment with 9 control and 9 acclimatized plants.  She determines Hsp expression at 25, 35, and 45 C.  3 plants of each treatment are exposed to each temperature.  Each plant is in its own separate environmental chamber. 
+
+
+```{r, include = F}
+#[extension - nesting]
+```
+
+
+
+```{r, include=FALSE}
+# Make the data
+int.trt.effect <- c(0.5,
+                    0,
+                    0.025,
+                    0.05)
+
+params <- c(int.trt.effect)
+
+SD <- 1
+n <- 6
+
+trt.labels <- expand.grid(treatment = c("control","acclim"),
+            temp = c(25,35,45),
+            i.within.trt = 1:3)
+
+
+trt.labels$treatment <- factor(trt.labels$treatment,
+                     levels = c("control","acclim"))
+
+
+tot.n <- dim(trt.labels)[1]
+
+mm <- model.matrix(~treatment*temp, trt.labels)
+
+set.seed(123)
+x <- mm %*% params + rnorm(n = tot.n,mean = 0,sd = SD)
+x <- ifelse(x < 0,0,x)
+dat.expt4 <- cbind(Hsp.express = x,
+                   trt.labels)
+```
+
+
+
+## Experiment 4 data:
+```{r, echo = F}
+dat.expt4.wide <- dcast(dat.expt4,
+      formula = treatment + i.within.trt  ~ temp,
+      value.var = "Hsp.express",
+      fun.aggregate = sum)
+dat.expt4.wide[,c(3:5)] <- round(dat.expt4.wide[,c(3:5)],3)
+pander(dat.expt4.wide,caption = "Experiment 4 data.  Each value is from a seperate plant.")
+```
+
+
+```{r, echo =F}
+qplot(y = Hsp.express,
+      x = temp,
+      color = treatment,
+      geom = c("point"),
+      data = dat.expt4) +
+  geom_smooth(method = "lm", 
+              se = F)
+```
+
+
+## Experiment 4 analysis
+
+* What is the proper analysis of these data?
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+## Experiment 4 analysis answer:
+
+```{r, include=FALSE}
+lm.4 <- lm(Hsp.express~temp*treatment, data = dat.expt4)
+
+summary(lm.4)
+```
+
+
+<br><br><br><br>
+
+## EXPERIMENT 5: Impact of heat stress on the gene "hsp1" 
+
+```{r,include = F}
+#[before-after; paired t-test]
+```
+
+Let's imagine that Zhang identified a gene linked to Hsp production called hsp1.   To study hsp1's regulation Zhang conducted an experiment with 9 plants.  First, she sampled leaf tissue from each plant while it was growing at 22 degrees C (72 F).  Then she exposed these same plants to 45 C.  Each plant was subject to the high temperature conditions using special bench-top environmental chambers that house a single plant.  From both the 22 C and 45 C samples she quantified hsp1 gene expression.
+
+What is the correct analysis of this experiment?
+
+<br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+
+
+
+## EXPERIMENT 6. Scaled up experiment on heat Stress and Hsp, trial 1.  
+
+```{r,include = FALSE}
+#[nesting; average subsamples or nested ANOVA]
+```
+
+Let's say Zhang just got a big NSF grant and can buy 6 big, refrigerator-sized environmental chambers that can go up to 45 C.  Each chamber can hold 60 plants, but she starts off with just 30.  In 3 of these chambers she puts non-acclimated plants and in the other 3 she puts acclimatized plants.  The total number of plants is 6 chambers x 30 plants = 180 plants; 90 controls, 90 acclimatized.
+
+<br><br><br><br>
+
+## EXPERIMENT 7: Scaled up experiment on stress and Hsp, trial 2. 
+
+```{r, include = FALSE}
+#[Blocking; average subsamples then paired t-test, or blocked ANOVA]
+```
+
+Let's say Zhang just got a big NSF grant and can buy 6 big, refrigerator-sized environmental chambers that can go up to 45 C.  Each chamber can hold 60 plants.  In each chamber she puts 30 control plants and 30 acclimatized plants.  She has a total of 360 plants. [extension: 3 treatments].
+
+
+
+```{r, include = F}
+## EXPERIMENT 8: Repeated measures
+```
+
+
+
+
+<br><br><br><br>
+
+ 
+
+
+
+
+how biased is aov() with unbalanced data?
+
+ML vs REML
+
+Why so many differnt p-values?

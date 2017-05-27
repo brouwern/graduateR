@@ -1,0 +1,266 @@
+---
+title: "Intro To ANOVA 5: follow-up tests"
+author: "brouwern@gmail.com"
+date: "March 2, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Data
+```{r}
+y.column <- c(	11.24329808,	10.57397347,	8.798111146,	9.648373069,	10.16202242
+,	9.253887088,	11.51807329,	12.22480837,	8.797802989,	10.6733833,	12.38641145,	10.55536801,	10.83550408,	9.473762458,	11.8490472,	11.52501837,	10.02532039,	10.26283115,	9.541543832,	10.8289181,	10.61879171,	10.56255483,	10.12447501,	11.27377454,	8.985686839,	9.661441062,	9.337572633,	9.624627193,	9.562961301,	8.898324866,	9.033531311,	12.00679606,	10.80340919,	10.72436056,	10.39465146,	10.29051717,	11.32943119,	11.95522121
+,	12.59729367,	10.49891019,	9.58186603,	10.83069437,	9.639272696,	11.23721842,	10.25767478,	10.83731922,	10.46711202,	10.6520578,	11.90867276,	12.38906162,	11.33769377)
+
+
+#create stacked dataframe
+n<-17
+dat <- data.frame(fluoro = y.column,
+                  treatment = c(rep("A",n),rep("C",n),rep("B",n)))
+
+#set factor levels
+dat$treatment <- factor(dat$treatment ,
+                        levels = c("A","C","B"))
+```
+
+
+# Plotting Function
+
+```{r}
+easy.ggplot.ci <- function(dat, y, x, mult = 1){
+  library(ggplot2)
+  ggplot(data = dat, 
+       aes(y = dat[,y], 
+           x = dat[,x])) + 
+stat_summary(fun.data = "mean_se",
+             fun.args = list(mult = mult)) +
+    xlab(x)+ylab(y)
+}
+```
+
+
+
+
+
+
+
+
+# After a significant F-test
+
+* planned comparisons
+* un-planned comparisons
+* post-hoc testing
+
+
+# All pairwise comparisons
+
+We only have 3 treatments so its reasonable to compare all combinations (as we did with t-test)
+
+* pairwise.t.test() function
+* does ALL comparisons
+* must provide raw data
+* note key phrases in output
+    + "Pairwise comparisons...w/pooled SD"
+    + "P value adjustment method: holm"
+* These results are slightly different than t.test
+    + using different estimate of SD
+    + adjusting p-values for "multiple comparisons"
+    
+```{r}
+pairwise.t.test(x = dat$fluoro,
+                g = dat$treatment)
+
+```
+
+
+
+
+# A different adjustment method
+
+* Biologists long like the Bonferonni
+* First, run w/o corrections
+* THen run w/bonferroni
+```{r}
+#set p.adjust.method = "none"
+pairwise.none <- pairwise.t.test(x = dat$fluoro,
+                g = dat$treatment,
+                p.adjust.method = "none")
+
+
+#set p.adjust.method = "bonferroni"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pairwise.bonf <- pairwise.t.test(x = dat$fluoro,
+                g = dat$treatment,
+                p.adjust.method = "bonferroni")
+
+
+#compare output
+##(ignore "cat"; its just to add labels on the fly)
+    cat("no adjustment\n")
+pairwise.none$p.value
+    cat("\n\n\n")
+    cat("bonferroni adjustment\n")
+pairwise.bonf$p.value
+
+```
+
+
+
+# How is Bonferonni calcuated?
+
+* multiple p value by number of tests
+* very very conservative approach to multiple testing
+* still used by some
+
+```{r}
+    cat("no adjustment\n")
+3*pairwise.none$p.value
+    cat("\n\n\n")
+    cat("bonferroni adjustment\n")
+pairwise.bonf$p.value
+```
+
+
+
+# Why I don't like pairwise.t.test()
+
+**PROs and CONs of pairwise.t.test()**
+
+* PRO: uses pooled variance
+    + increases power of test 
+    + uses more degrees of freedom (df)
+    + (can turn this off w/  pool.sd = F)
+* PRO: has multiple methods - pick the one/advisor/reviewers want
+* CON: ONLY reports p; doesn't report t statistic!
+
+
+
+
+
+
+# Alternative approach: Tukey's HSD
+
+* HSD = "honestly significant difference"
+* must fit model with aov() first
+* Calcualtes 
+    + difference (diff) between each treatment 
+    + (this is an effect size)
+    + confidence interval around this effect size
+    + p-value
+* P-value is adjusted to main alpha at specificed level for the entire "family" of tests
+
+```{r}
+m.aov <- aov(fluoro ~ treatment, 
+             data = dat)
+TukeyHSD(m.aov)
+```
+
+
+
+# Alternative approach: Dunnet's test
+
+* Compare each treatment against the control
+    + A vs C
+    + B vs C
+* Controls for Type I error rate
+* Good choice if you aren't comparing treatmetns against each other
+* Problem: ???? 
+    + (All multiple comparisons approaches have problems)
+* see also: en.wikipedia.org/wiki/Dunnett's_test
+
+
+In R. you can do Dunnett's test using the multcomp library. However, need to make the 1st level of our factor "treatment" into the control for this to work
+
+
+## Reset the factor levels
+```{r}
+library(multcomp)
+
+dat$treatment <- factor(dat$treatment,
+                        levels = c("treatment.C",
+                                  "treatment.A",
+                                  "treatment.B"),
+                        labels = c("C","A","B"))
+```
+
+## Re-run the model with new levels
+
+```{r}
+model1.newlevs <- lm(fluoro ~ treatment, 
+             data = dat)
+```
+
+
+## Dunnets in multcomp Run the test
+
+**NOTE**
+
+* synatx for multcomp can get tricky
+* not ultra user friendly
+* glht = "general linear hypothesis test"
+* arguement linfct = "linear function"
+* mcp = multiple comparison procedure (I think)
+* w/in mcp, need to specify the column/factor we are working with
+    + here, its treatment
+    
+
+```{r}
+library(multcomp)
+#Run Dunnett's test
+glht.Dunn <- glht(model = model1.newlevs,
+     linfct=mcp(treatment="Dunnett"))
+
+summary(glht.Dunn)
+```
+
+**QUESTIONS**
+
+* What does "A - C == 0" mean?
+
+
+
+
+# Multcomp is very flexible
+
+* Can do Tukey's too 
+    + without running aov() 1st!
+    
+```{r}
+#Run Tuk's test
+glht.tuk <- glht(model = model1.newlevs,
+     linfct=mcp(treatment="Tukey"))
+
+summary(glht.tuk)
+
+```
+
+
+
+

@@ -1,0 +1,76 @@
+---
+title: "Untitled"
+author: "brouwern@gmail.com"
+date: "April 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.width = 8)
+```
+
+
+```{r}
+#load data
+dat1 <- read.csv("Grogan Data.csv")
+
+
+#identify "S" data
+i.S <- which(dat1$fraction == "S")
+
+
+#isolate just the S
+dat1.S <- dat1[i.S,]
+
+
+#identify each strain
+i.pCG12 <- which(dat1.S$strain == "pCG12")
+i.pCG4  <- which(dat1.S$strain == "pCG4")
+i.pCG5  <- which(dat1.S$strain == "pCG5")
+i.pCG6  <- which(dat1.S$strain == "pCG6")
+i.pNB95 <- which(dat1.S$strain == "pNB95")
+i.SF2.1 <- which(dat1.S$strain == "SF2.1")
+
+
+#run each t-test
+p.i.pCG12 <- t.test(dat1.S$abs[i.SF2.1],
+                    dat1.S$abs[i.pCG12])$p.value
+
+
+pi.pCG4 <- t.test(dat1.S$abs[i.SF2.1],
+       dat1.S$abs[i.pCG4])$p.value
+
+
+pi.pCG5 <- t.test(dat1.S$abs[i.SF2.1],
+       dat1.S$abs[i.pCG5])$p.value
+
+pi.pCG6 <- t.test(dat1.S$abs[i.SF2.1],
+       dat1.S$abs[i.pCG6])$p.value
+
+pi.pNB95 <- t.test(dat1.S$abs[i.SF2.1],
+       dat1.S$abs[i.pNB95])$p.value
+
+
+#gather up the p-valeus
+ps <- c(p.i.pCG12,
+        pi.pCG4,
+        pi.pCG5,
+        pi.pCG6,
+        pi.pNB95)
+
+#correct p-values w/ bonf
+p.adjust(p = ps,method = "bonferroni")
+
+#correct p-values w/holm (less conservative)
+p.adjust(p = ps,method = "holm")
+
+
+#pairwise t-test (note - doesn't use welches correctio)
+pairwise.t.test(x = dat1.S$abs,
+                g =  dat1.S$strain,
+                pool.sd = FALSE,
+                p.adjust.method = "none")
+
+```
+

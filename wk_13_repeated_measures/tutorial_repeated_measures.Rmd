@@ -1,0 +1,872 @@
+---
+title: "Untitled"
+author: "brouwern@gmail.com"
+date: "April 3, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# There are many ways to analyze repeated measures data
+
+Coffman et al 2016:
+
+"In many longitudinal RCTs, research participantsare measured at the same follow-up
+measurement occasions and the number of follow-up occasions is small, for example, 2-4. Typically, baseline outcomes are measured prior to randomisation. In analyses, baseline outcomes can be ignored, used to calculate change scores, used conditionally as covariates or can be part of the outcome response vector. ... The general consensus in the statistical literature for a longitudinal RCT is that the conditional approach, that is, analysis of covariance (ANCOVA), is the most
+powerful and robust method to address the fundamental questions of interest. We take this view, and elaborate on its implementation"
+
+
+
+# Case study: hypertension data
+
+A data frame with 30 rows and 4 variables:
+
+* Subject: Patient identification number.
+* Diet: High or low calcium condition.
+* Time: 1 of 3 time points (units unknown).
+    + For some examples I will use just the last, or the 1st and las
+* Y: Blood pressure, the outcome variable
+
+
+* 10 patients were randomly assigned to a high or low dietary calcium condition (five 5 group).  
+* Blood pressure measurements (Y) were taken at 3 time points.
+
+
+
+# Load data
+```{r}
+library(labstats)
+data(hypertension)
+
+hypertension$Subject.fac <- factor(hypertension$Subject)
+hypertension$Time.fac <- factor(hypertension$Time)
+
+```
+
+
+```{r}
+head(hypertension)
+```
+
+
+# Plot raw data
+
+I'll plot the data for each individual in the dataset, connecting thier points over time wiht a line.
+
+* I use the "group = " arguement to get ggplot to tell ggplot to link all the measurements within an individual with a line.
+* This can take practice to get this right
+
+
+## qplot() version
+
+Using ggplot's qplot() function
+
+```{r}
+library(ggplot2); library(cowplot)
+qplot(y = Y,
+      x = Time,
+      color = Diet,
+      shape = Diet,
+      group = Subject,
+      geom = c("point",
+               "line"),
+      data = hypertension)
+
+```
+
+## ggplot() version
+
+```{r}
+ggplot(aes(y = Y,
+           x = Time, 
+           color = Diet,
+           shape = Diet,
+           group = Subject),
+       data = hypertension) +
+  geom_point() +
+  geom_line()
+```
+
+## Base R
+
+The interaction.plot() plot function is clunkier but gets the job done too.
+
+```{r}
+par(mfrow = c(1,1), mar = c(4,4,1,1))
+interaction.plot(response = hypertension$Y,
+                 x.factor = hypertension$Time,
+                 trace.factor = hypertension$Subject,
+                 trace.label = "Subject",
+                 xlab = "Time",
+                 ylab = "Y")
+```
+
+
+
+
+
+# Make "wide" data
+
+```{r}
+library(reshape2)
+
+hypertension.wide <- dcast(data = hypertension,
+      formula = Subject + Diet ~ Time,
+      value.var = "Y")
+```
+
+
+
+Relabel
+
+```{r}
+names(hypertension.wide)[3:5] <- paste("Y.time",
+                                       1:3,
+                                       sep = ".")
+```
+
+
+
+Calcualate change from initial (change score)
+```{r}
+hypertension.wide$change1.to.3 <- hypertension.wide$Y.time.3 -
+                                  hypertension.wide$Y.time.1
+```
+
+
+
+
+
+# Before after analysis
+
+Let's assume that the 1st timepoint in the hypertension data is a baseline measurement.  Let's then subset the data an do some typical before-after analyses, ignoring the middle time point.
+
+
+## Using just 1 time point
+
+### End-point t.test
+
+Just look at final value
+
+```{r}
+t.test(Y.time.3 ~ Diet, 
+       data = hypertension.wide)
+```
+
+* This analysis throws away useuful information by only using the final time point in an "end point analysis.
+* In this particular dataset its not very important because the treatmente effect is strong.  
+* in other cases not using extra information is a waste of information that decreases power.
+
+
+
+## Using 2 time points: An incorrect approach
+
+
+* A common but very bad appraoch is to conduct 2 seperate analyses, one for each treatment group.
+* THerefore, no direct comparison between groups is made
+* However, peole who do this often make conclusions based on comparing the groups. 
+* FOr this dataset, we'll test 2 seperate hyotheses
+    + Ha1: the HighCa group changed from time 1 to time 2
+    + Ha2: the LowCa group changed from time 1 to time 2
+
+
+
+### Subset data
+Create indexes for for the HighCa group and LowCa group so they can be analyzed seperately.
+```{r}
+i.HighCa <- which(hypertension.wide$Diet == "HighCa")
+i.LowCa  <- which(hypertension.wide$Diet == "LowCa")
+```
+
+
+Analzye the change from time 1 to time 3 for just the HighCa group
+```{r}
+t.test(hypertension.wide[i.HighCa,"Y.time.3"],
+       hypertension.wide[i.HighCa,"Y.time.1"],
+       paired = TRUE)
+```
+
+
+Analzye the change from time 1 to time 2 for just the HighCa group
+```{r}
+
+t.test(hypertension.wide[i.LowCa,"Y.time.3"],
+       hypertension.wide[i.LowCa,"Y.time.1"],
+       paired = TRUE)
+
+```
+
+
+
+Another incorrect approach would be to do one test on the the baseline data (time 1)  comparing High vs Low Ca, and then do a 2nd test on the endpoint, High vs. Low CA
+
+
+
+
+## Using 2 time points: better approachs
+
+
+### End-point "change score"
+
+Change from baseline
+
+Not a recommended 
+
+* Subtract last from first measurement
+* This method is not recommended
+
+```{r}
+summary(lm(change1.to.3 ~ Diet ,
+           data = hypertension.wide))
+```
+
+
+### End-point percent change
+
+Not recommended
+
+Vickers 2001 The use of percentage change from baseline as an outcome in controlled trials is statistically inefficient: a simulation study.  BMJ Med Res Meth 1. Indicates why this is inefficient
+
+```{r}
+hypertension.wide$change.percent <- hypertension.wide$change1.to.3/hypertension.wide$Y.time.1*100
+```
+
+
+
+Plot it
+```{r}
+ggplot(data = hypertension.wide,
+       aes(y = change.percent,
+           x = Diet,
+           color = Diet))  +
+  geom_jitter(width = 0.125) +
+  ylab("Percent Changed (%)")
+```
+
+
+
+Model it
+```{r}
+lm.per.change <- lm(change.percent ~ Diet ,
+                     data = hypertension.wide)
+```
+
+
+
+Look at model output
+```{r}
+summary(lm.per.change)
+```
+
+
+**QUESTION** 
+
+How do you itnerpret these regression coeffficients?  Why might this type of analysis be favored by researchers?
+
+
+
+
+
+
+
+## End-point ANCOVA
+
+* Impact of diet "controlling for" initial Y value. 
+* See:Vickers & BLand (2001) Analyzing controlled trials with baseline and follow up measuremnets MBJ 323 
+    + They discuss why this ANCOVA technique has more power than a change-score analysis.
+    
+    
+
+## Plot data
+
+```{r}
+qplot(y = Y.time.3,
+      x = Y.time.1,
+      color = Diet,
+      shape = Diet,
+      data = hypertension.wide) +
+  ggtitle("ANOVA controlling for intial bp") +
+  xlab("Initial Blood pressure (time 1)") +
+  ylab("Final Blood pressures (time 3)") +
+  xlim(90,200) +
+  ylim(90,200) +
+  geom_rug() 
+```
+
+**QUESTIONs**
+* What does the "rugplot" help to highlight?
+* "Comment out" the xlim() and ylim(); how does setting these potentially impact the perception of the plot?
+
+
+
+## Model data
+
+
+### Fit the model
+* Fit a model with
+    + "Diet" as a categorical variable
+    + Intial bp ("Y.time.1") as a continous covariate
+    
+
+```{r}
+lm.ancova <- lm(Y.time.3 ~ Diet +
+                      Y.time.1,
+              data = hypertension.wide)
+
+```
+
+### Examine output
+
+```{r}
+summary(lm.ancova)
+```
+
+
+### Plot output
+
+Get the coefficients from the model that define the intercept, treatment effect and slopes.
+```{r}
+intercept   <- coef(lm.ancova)["(Intercept)"]
+diet.effect <- coef(lm.ancova)["DietLowCa"]
+initial.BP.effect <- coef(lm.ancova)["Y.time.1"]
+
+```
+
+Plot the data with the regession lines.
+```{r}
+qplot(y = Y.time.3,
+      x = Y.time.1,
+      color = Diet,
+      shape = Diet,
+      data = hypertension.wide) +
+  geom_rug() +
+  geom_point(size = 3) +
+  xlab("Initial Blood pressure (time 1)") +
+  ylab("Final Blood pressures (time 3)") +
+  geom_abline(intercept = intercept,
+              slope = initial.BP.effect,
+              color = "red") +
+  geom_abline(intercept = intercept + 
+                          diet.effect,
+              slope = initial.BP.effect,
+              color = "blue")
+```
+
+
+### ANCOVA with an interaction
+
+Its easy to plot a model with an interaction in ggplot using geom_smooth()
+
+* method = "lm" make it a straight line
+* se = FALSE removes the errorbands.
+
+```{r}
+qplot(y = Y.time.3,
+      x = Y.time.1,
+      color = Diet,
+      shape = Diet,
+      data = hypertension.wide) +
+  geom_rug() +
+  geom_point(size = 3) +
+  xlab("Initial Blood pressure (time 1)") +
+  ylab("Final Blood pressures (time 3)") +
+  geom_smooth(method = "lm",
+              se = FALSE)
+```
+
+
+
+**QUESTION**
+
+* Fit a model with lm()
+* Is it a better fit to the data?
+* Check the residuals; is heterogenity of variance a problem.
+
+
+
+
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+<br><br><br><br><br><br><br><br><br>
+
+## 2-way ANOVA: before vs. after
+
+Another way to analyze these data are with a two-way anova where time is treated as a categorical variable.  THe focus here is on wheter there is a time*diet interaction.  There is sublte difference between this and the ANCOVA in terms of interpretation that I frankly can't totally describe; they analyses results in similar conclusions but haver very differnet p-values.
+
+
+* Use original dataframe in "long" format (not "wide")
+* Have to recogonize the repeated measures nature of the data to do this correctly.
+
+
+### Set index for time 1 and time 2
+
+Since we're in the "long" format all of our observatoins are in the same column, "Y", with a column "Time" designating time 1, 2 or 3.
+
+```{r}
+head(hypertension)
+```
+
+Make an index for just time 1 and time 3 (initial and endpoint)
+```{r}
+i.time1.and.3 <- which(hypertension$Time != 2)
+```
+
+Make a new dataframe
+
+```{r}
+hyper.t.1.and3 <- hypertension[i.time1.and.3,]
+```
+
+### Plot data
+
+We can easily make an interaction plot when the data is in "long" format.
+
+```{r}
+qplot(y = Y,
+      x = factor(Time),
+      color = Diet,
+      group = Subject,
+      geom = c("point",
+               "line"),
+      data = hyper.t.1.and3)
+```
+
+
+
+
+### Incorrect 2-way ANOVA: ignore repeated measures
+
+* We can fit the model with lm(), but we'd have to ignore the repeated measures nature of the data, which treats each data point as independent.
+* This implies that different individuals were sampled at each timepoint
+
+```{r}
+#this is incorrect!
+summary(lm(Y ~ Diet*Time, 
+           hyper.t.1.and3))
+```
+
+
+### Correct 2-way ANOVA: repeated measures
+
+This can be done way too many ways
+
+* aov() w/ the Error() term
+* ez::ezANOVA (not shown)
+    + This is just a "wrapper" for aov() that can help specify the error() term for complex models
+* nlme::lme
+* lme4::lmer (not shown)
+
+
+#### aov()
+
+```{r}
+summary(aov(Y ~ Diet*Time.fac +
+                Error(Subject.fac), 
+                hyper.t.1.and3))
+
+
+```
+
+#### w-way rmANOVA with nlme()
+
+
+* Results should be almost identical to aov() (but different than anova with lm)
+* Note: run model w/ ML b/c we are interested in teh fixed effects
+
+```{r}
+library(nlme)
+
+lme.r.int.ML <- lme(Y ~ Diet*Time.fac,
+                random = ~1|Subject, 
+                hyper.t.1.and3,
+            method = "ML")
+
+summary(lme.r.int.ML)
+
+```
+
+
+
+
+```{r}
+hypertension.wide$lme.int <- coef(lme.r.int.REML)$"(Intercept)"
+```
+
+
+
+#### lmer
+
+
+Fit full model with time*diet interaction, and nested model without the interaction.
+
+```{r}
+library(lme4)
+
+lmer1vs3.full <- lmer(Y ~ Diet*Time.fac 
+                + (1|Subject), 
+                hyper.t.1.and3,
+            REML = FALSE)
+
+
+lmer1vs3.add <- lmer(Y ~ Diet + Time.fac 
+                + (1|Subject), 
+                hyper.t.1.and3,
+            REML = FALSE)
+
+```
+
+
+Because lmer doesn't give p-values, test significance of interaction with pbkrtest::KRmodcomp 
+```{r}
+library(pbkrtest)
+
+KRmodcomp(lmer1vs3.full,
+          lmer1vs3.add)
+```
+
+
+
+# Regular rmANOVA w/aov()
+
+Note: it matters whether the term in Error() is a factor or continous!
+
+```{r}
+
+#Incorrect
+summary(aov(Y ~ Diet*Time.fac +
+                Error(Subject), 
+                hypertension))
+
+#Correct
+summary(aov(Y ~ Diet*factor(Time) +
+                Error(Subject.fac), 
+                hypertension))
+
+```
+
+
+
+
+
+# regular rmANOVA with ezANOVA()
+
+The synatax is oriented towards terminology used by psychologists.
+
+* dv = "dependent variable" (ecologists often say "response var")
+* wid = "within-subject identified (id)"
+* within = "within-subject" factor; the thing that varies within subjects
+* between = "between-subject" factor; that thing that varies between different subjects
+
+```{r}
+library(ez)
+
+ez.out <- ezANOVA(data = hypertension,
+        dv = Y,
+        wid = Subject.fac,
+        within = Time.fac,
+        between = Diet)
+
+ez.out$ANOVA
+
+ez.out[[2]]
+
+```
+
+
+
+
+#### nlme: random intercepts only
+
+```{r}
+library(nlme)
+
+lme.r.int.ML <- lme(Y ~ Diet*factor(Time),
+                random = ~1|Subject, 
+                hypertension,
+            method = "ML")
+
+```
+
+
+#### lmer: random intercepts only
+
+```{r}
+library(lme4)
+
+lmer1vs3.int.full <- lmer(Y ~ Diet*factor(Time) 
+                + (1|Subject), 
+                hypertension,
+            REML = FALSE)
+
+
+lmer1vs3.int.add <- lmer(Y ~ Diet + factor(Time) 
+                + (1|Subject), 
+                hypertension,
+            REML = FALSE)
+
+```
+
+```{r}
+library(pbkrtest)
+
+KRmodcomp(lmer1vs3.int.full,
+          lmer1vs3.int.add)
+```
+
+
+
+
+
+
+
+
+
+# Repeated measures MANOVA (rmMANOVA)
+
+Almost nobody does this anymore, but you might still run into it.
+
+```{r}
+manova1 <- manova(cbind(Y.time.1,Y.time.2,Y.time.3) ~ Diet, 
+               data = hypertension.wide)
+
+summary(manova1)
+```
+
+
+
+car vs. manova
+
+Briefly stated, this is because base-R's manova(lm()) uses sequential model comparisons for so-called Type I sum of squares, whereas car's Manova() by default uses model comparisons for Type II sum of squares.
+
+## Alternative with Anova::car
+
+There's another way (why!!!!!) to fit manova's in R using first the lm() function and then calling Anova() from the car package.   You might run into this approach if for some reason you want/need to to rmMANVOA/MANOVA
+
+```{r}
+library(car)
+manova.car <- lm(cbind(Y.time.1,Y.time.2,Y.time.3) ~ Diet, 
+               data = hypertension.wide)
+Anova(manova.car) 
+Manova(manova.car)
+```
+
+
+
+
+
+
+## Good reference
+Multivariate Linear Models in R: An Appendix to An R Companion to Applied Regression, Second Edition. Fox & Weisberg.
+
+
+
+
+## Stackoverflow questiosn on manova()
+
+Expalins base::manova vs. car::Maova approach
+http://stats.stackexchange.com/questions/11127/multivariate-multiple-regression-in-r
+
+http://stats.stackexchange.com/questions/183441/correct-way-to-perform-a-one-way-within-subjects-manova-in-r#
+
+http://stats.stackexchange.com/questions/141468/what-is-the-best-approach-for-this-set-up-rm-anova-manova-mixed-models?noredirect=1&lq=1
+
+
+
+
+# Random slope models
+
+
+## Seperate slopes for each individual
+
+
+We can run models on each individual seperately
+
+
+### Subject 1
+```{r}
+i.Subj.1 <- which(hypertension$Subject ==1)
+hypertension[i.Subj.1,]
+summary(lm(Y ~ Time, data = hypertension[i.Subj.1,]))
+```
+
+
+### Subject 2
+```{r}
+
+i.Subj.2 <- which(hypertension$Subject ==2)
+hypertension[i.Subj.2,]
+
+summary(lm(Y ~ Time, data = hypertension[i.Subj.2,]))
+```
+
+
+## Loop over individuals
+
+With some code (don't worry about the details) we can run a model for each individual
+```{r}
+
+unique.subj <- unique(hypertension$Subject)
+unique.subj <- 1:10
+
+hypertension.wide$int <- NA
+hypertension.wide$slope <- NA
+
+
+for(i in 1:length(unique.subj)){
+  subj.i <- which(hypertension$Subject == i)
+  
+  mod.i  <- lm(Y ~ Time, data = hypertension[subj.i,])
+  
+  coefs.i <- coef(mod.i)
+  
+  hypertension.wide$int[i] <- round(coefs.i[1],2)
+  hypertension.wide$slope[i] <- round(coefs.i[2],2)
+}
+```
+
+
+
+## Plot each individuals regression
+
+Make your plotting figure as big as possible
+
+```{r}
+annotate.int <- paste("B0=",
+                    hypertension.wide$int,
+                    sep = "")
+
+annotate.slope <- paste("B1=",
+                    hypertension.wide$slope,
+                    sep = "")
+
+library(ggplot2); library(cowplot)
+qplot(y = Y,
+      x = Time,
+      color = Diet,
+      shape = Diet,
+      group = Subject,
+      geom = c("point"),
+      data = hypertension) + 
+  xlim(0,3) +
+  ylim(0,190) +
+  facet_wrap(~Subject,
+             nrow = 2)+
+  geom_smooth(method = "lm",
+              se = FALSE,
+              color = "black") +
+  annotate(geom = "text",
+           x = 0.75,
+           y = 190,
+           label =annotate.int) +
+  annotate(geom = "text",
+           x = 0.75,
+           y = 175,
+           label =annotate.slope) +
+  geom_abline(data = hypertension.wide,
+              aes(slope =  slope,
+                  intercept  =  int),
+              lty = 2)
+
+```
+
+
+# Tests of slopes
+
+One way to analyze repeated measures data is to calculate a slope for each individual as we just did, then test whether there is a significant difference between the groups.
+
+```{r}
+summary(lm(slope ~ Diet, 
+           data = hypertension.wide))
+```
+
+
+
+
+#### nlme: random intercepts only
+
+* A modern approach is to use a mixed model and fit a "random slope" to each individual.
+* To fit just a random intercept: "random = ~1|Subject"
+* To fit just a random slope:     "random = ~Time|Subject"
+
+```{r}
+library(nlme)
+
+lme.r.slope.ML <- lme(Y ~ Diet*Time,
+                random = ~Time|Subject, 
+                hypertension,
+            method = "ML")
+
+```
+
+
+#### lmer: random intercepts only
+
+
+We'll use REML = TRUE b/c we are looking at the random effects
+
+```{r}
+library(lme4)
+
+#fit full model w/ interaction
+lmer1vs3.slope.full <- lmer(Y ~ Diet*Time 
+                + (Time|Subject), 
+                hypertension,
+            REML = TRUE)
+
+
+
+#fit additive model for comparison
+lmer1vs3.slope.add <- lmer(Y ~ Diet + Time
+                + (Time|Subject), 
+                hypertension,
+            REML = TRUE)
+
+```
+
+```{r}
+library(pbkrtest)
+
+KRmodcomp(lmer1vs3.slope.full,
+          lmer1vs3.slope.add)
+```
+
+
+
+
+
+# Compare random slopes to individual regressions
+
+
+```{r}
+lmer1vs3.purerandom <- lmer(Y ~ 1 
+                + (Time|Subject), 
+                hypertension,
+            REML = TRUE)
+```
+
+we can get the random intercepts and slopes like this
+
+```{r}
+random.effects <- round(coef(lmer1vs3.purerandom)$Subject,3)
+
+
+#rename
+names(random.effects) <- c("rand.slope", "rand.int")
+
+#flip order
+random.effects <- random.effects[,c(2,1)]
+```
+
+
+
+Compare them to the seperate regressions
+
+```{r}
+cbind(hypertension.wide,
+     random.effects)
+```
+

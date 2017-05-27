@@ -1,0 +1,128 @@
+---
+title: "Lazic marble burying assay"
+author: "brouwern@gmail.com"
+date: "April 27, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Load data
+
+Load Lazic marble burying data
+```{r}
+marbles <- read.csv("Lazic_weight_marbles.csv")
+```
+
+# Recode as 0/1 for logistic regression
+
+```{r}
+marbles$marbles01 <- ifelse(marbles$marbles > 0,1,0)
+```
+
+
+# Plot poisson regression line
+
+marbles buried vs. weight of rat
+
+```{r}
+library(ggplot2)
+ggplot(aes(y = marbles,
+      x = weight),
+      data = marbles) +
+  geom_smooth(method = glm,
+              se = FALSE,
+              method.args = list(family = "poisson"),
+              size = 2) +
+  geom_point(aes(color = sex, 
+                 shape = sex),
+             size =3)
+```
+
+
+# Model: Poisson regression with continous predictor, weight
+
+```{r}
+glm.pois.mean <- glm(marbles ~ weight, 
+          data = marbles,
+          family = poisson(link = "log"))
+
+```
+
+
+# Logistic regression with all 4 treatment combos
+
+```{r}
+glm.logit.full <- glm(marbles01 ~ group*drug,
+                      family = binomial,
+                      data = marbles)
+```
+
+# Plot predictions
+
+Make fake data
+```{r}
+summary(marbles)
+fake.data <- expand.grid(group = c("SAL","VPA"),
+                         drug = c("MPEP","SAL"))
+
+fake.data
+```
+
+Put fake data into predictions
+```{r}
+fake.data$logit.preds <- predict(glm.logit.full,
+                                 newdata = fake.data)
+
+```
+
+
+SE of predictions
+```{r}
+SE.preds <- predict(glm.logit.full,
+                                 newdata = fake.data,
+                                 se.fit = TRUE)
+
+fake.data$SE <- SE.preds$se.fit
+```
+
+
+Predictions on probablity scale
+```{r}
+fake.data$real.pred <- invlogit(fake.data$predictions)
+```
+
+
+95% CI on probalbity scale
+```{r}
+fake.data$CI.lo <- invlogit(fake.data$predictions -
+                            1.96*fake.data$SE)
+
+fake.data$CI.hi <- invlogit(fake.data$predictions +
+                            1.96*fake.data$SE)
+```
+
+Plot output
+
+```{r}
+fake.data$treatment <- paste(fake.data$group,
+                             "\n",
+                             fake.data$drug,
+                             sep = "")
+pd <- position_dodge(0.2)
+qplot(y = real.pred,
+      x = treatment,
+      color = drug,
+      shape = group,
+      data = fake.data) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = CI.lo,
+                    ymax = CI.hi),
+                width = 0)
+```
+
+

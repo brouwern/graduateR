@@ -1,0 +1,323 @@
+---
+title: "Regression Diagnostics"
+author: "brouwern@gmail.com"
+date: "January 30, 2017"
+output:
+  word_document:
+    reference_docx: rmarkdown_template.docx
+    fig_width: 9
+    fig_height: 5
+    fig_caption: true
+---
+
+# Residual analysis: assessing assumptions of models
+
+```{r, echo=FALSE}
+source("./scripts_Lecture4/sx_reg_flowchart2_fit_diag_inf.R")
+```
+
+
+```{r, echo = F}
+
+#load data
+milk2 <- read.csv(file = "Skibiel_clean_milk_focal_column.csv")
+milk3 <- read.csv(file = "Skibiel_clean_milk_focal_genera.csv")
+
+# re-fit null model
+lm.null <- lm(fat.percent ~ 1,
+              data = milk3)
+# re-fit female mass model
+lm.mass <- lm(fat.percent ~ log(mass.female), data = milk3)
+
+#gestation duration
+lm.gestation <- lm(fat.percent ~ log(gest.month.NUM), data = milk3)
+
+#lactation duration
+lm.lac.duration <- lm(fat.percent ~ log(lacat.mo.NUM), data = milk3)
+
+#Litter mass
+lm.litter.mass <- lm(fat.percent ~ log(mass.litter), data = milk3)
+```
+
+
+
+# Residual analysis: assessing assumptions of models
+
+## Assumptions of regression
+
+* Normality
+* Heterogeneity of variance
+* Random sampling
+
+# What are residuals?
+
+
+```{r, echo = F}
+par(mfrow = c(1,1),mar = c(4.4,4.4,2,1))
+plot(fat.percent ~ log(lacat.mo.NUM),
+     data = milk3,
+     ylab = "Log(lactation dur.)",
+     pch = 18,
+     cex =2,
+     main = "Fat vs lactation duration")
+abline(lm.lac.duration, col = 3, lwd = 3)
+```
+
+
+
+```{r, echo = F}
+#Function to plot residuals as deviations from regression line
+plot.my.residuals <- function(model,lwd.=2){
+  y.hat <- predict(model)
+  dat <- model$model
+  segments(x0 = dat[,2], 
+           x1 = dat[,2],
+           y1 = dat[,1], 
+           y0 = y.hat, col = 2, lty = 2,lwd = lwd.)
+}
+
+```
+
+
+# Plot residuals
+
+* aka e[i], errors
+* Residuals are distance from the regression line to the observed data
+* Regression line represents predictions from the regression equation
+* Residual = predictions - observation
+* Typically squared when doing any math
+    + hence "squared errors" 
+
+```{r, echo = F}
+plot(fat.percent ~ log(lacat.mo.NUM),
+     data = milk3,
+     #ylab = "Log(lactation dur.)",
+     pch = 18,
+     cex =2,
+     main = "Fat vs lactation duration")
+abline(lm.lac.duration, col = 3, lwd = 3)
+plot.my.residuals(lm.lac.duration)
+legend("topright",legend = "Residuals",col = 2,lty = 2)
+```
+
+
+## Compare residuals from Null and Alt hypothesis
+
+```{r, echo = F}
+par(mfrow = c(1,2))
+plot(fat.percent ~ log(lacat.mo.NUM),
+     data = milk3,
+     #ylab = "Log(lactation dur.)",
+     pch = 18,
+     cex =2,
+     main = "Fat vs lactation duration")
+abline(lm.null, col = 4, lwd = 3)
+resid.Ho <- resid(lm.null)
+y.hat.Ho <- predict(lm.null)
+y <- milk3$fat.percent
+x <- log(milk3$lacat.mo.NUM)
+segments(x0 = x,x1 = x,y0 = y.hat.Ho,y1 = y, col     = 2, lty = 2,lwd = 2)
+
+plot(fat.percent ~ log(lacat.mo.NUM),
+     data = milk3,
+     #ylab = "Log(lactation dur.)",
+     pch = 18,
+     cex =2,
+     main = "Fat vs lactation duration")
+abline(lm.lac.duration, col = 3, lwd = 3)
+plot.my.residuals(lm.lac.duration)
+legend("topright",legend = "Residuals",col = 2,lty = 2)
+```
+
+
+# What are model predictions?
+
+* aka "y.hat"
+* aka "fitted values"
+
+```{r, echo = F}
+par(mfrow = c(1,1),
+    mar = c(5,5,3,2))
+plot(fat.percent ~ log(lacat.mo.NUM),
+     data = milk3,
+     #lab = "Log(lactation dur.)",
+     pch = 18,
+     cex =2,
+     main = "Predicted values")
+abline(lm.lac.duration, col = 3, lwd = 3)
+points(x = 0.833, y = 19, col = 3, pch = 19)
+points(x = 0.833, y = 9.37, col = 4,cex = 1.3, pch = 19)
+
+int <- round(coef(lm.lac.duration)[1],2)
+slope <- round(coef(lm.lac.duration)[2],2)
+eq <- paste("fat.percent ~ ",slope,
+            " * log(lactation duration)",
+            " + ",int, sep = "")
+mtext(text = eq,side = 3,adj = 0)
+
+eq2 <- paste("y.hat = ",slope,
+             " * 0.833",
+             " + ",int, sep = "")
+text(x = 0.85, y = 16,
+     label = eq2,pos = 4, cex = 1.5)
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+# Diagnostics by hand
+
+
+## Normality of residuals
+
+* resids()
+
+```{r, echo =F}
+resids <- resid(lm.lac.duration)
+hist(resids)
+abline(v = 0,lwd = 4,lty = 2,col =3)
+```
+
+Note: residuals sum to approximatley zero (or very very very very very close)
+```{r}
+sum(resids)
+```
+
+
+## Heterogen of variance
+
+* fitted() extracts predictions / fitted values
+
+```{r}
+fits <- fitted(lm.lac.duration)
+plot(resids ~ fits)
+abline(h = 1, lty = 3)
+```
+* What does this imply?
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+# Easy diagnostics
+
+```{r}
+par(mfrow = c(2,2), mar = c(5,5,2,2))
+plot(lm.lac.duration)
+```
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Diagnostic 1: Residuals vs. fitted
+
+* Heterogen of variance
+* Very important assumption!
+* "which = 1" selects the resid vs. fitted plot
+
+```{r}
+par(mfrow = c(1,1))
+plot(lm.lac.duration, which = 1)
+```
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Diagnostic 2
+
+* Assesses normality
+* Not as important as heterogen of var
+* (many reviews think its important)
+* qqplot = "quantile-quantile plot"
+* Trying to decide how much to explain this...
+* Code: plot(model, which = 2)
+
+```{r, echo = F}
+par(mfrow = c(1,1))
+plot(lm.lac.duration, which = 2)
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+## Diagnostic 3
+
+* Scale-location plot
+* ...
+
+```{r, echo = F}
+par(mfrow = c(1,1))
+plot(lm.lac.duration, which = 3)
+```
+
+
+## Diagnostic 4
+
+* Outliers
+* High leverage values have high impact on regression
+* plot(model, which = 5)
+* See handout
+
+```{r, echo = F}
+par(mfrow = c(1,1))
+plot(lm.lac.duration, which = 5)
+```
+
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+
+
+
+
+# Addressing non-constant variance (heteroskedasticity)
+
+* Non-constant variance is a big issue
+* can "model the variance" using gls()
+* (generalized least squares)
+* (note use of "na.omit")
+
+
+```{r, echo = -1}
+library(nlme)
+
+milk.gls <- gls(fat.percent ~ log(lacat.mo.NUM), 
+                data = milk3,
+                na.action = na.omit,
+                weights  = varPower())
+
+summary(milk.gls)
+
+```
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+# Compare lm() and gls() models
+
+* Does modeling variance improve model fit?
+* our lm and gls models are NOT nested
+* test w/ AIC
+
+```{r, echo = -1}
+library(bbmle)
+AICtab(lm.lac.duration,
+       milk.gls)
+```
+
+
+<br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+
+# Does this fix heterogen of var?
+
+* Are residuals better?
+* Kinda
+
+```{r}
+plot(milk.gls, pch = 18)
+```
+
+
+

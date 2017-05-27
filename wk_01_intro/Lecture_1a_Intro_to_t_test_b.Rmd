@@ -1,0 +1,1121 @@
+---
+title: 'Duq. Lecture 1: Intro to R, t-test, etc'
+author: "brouwern@gmail.com"
+date: "December 30, 2016"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Functions used
+
+* length()
+* dim()
+* summary()
+* mean()
+* sd()
+* sqrt()
+* barplot()
+* tapply()
+* doBy::summaryBy()
+* plotrix::std.error()
+* t.test()
+* log()
+
+
+# Introduction
+
+We will re-make the figures that appeared in the following publications.
+
+* Figure 1b, Yi P and Melton DA.  2014.  Perspectives on the Activities of ANGPTL8/Betatrophin.  Cell 159:467-468.
+
+* Figure 5b, Yi P, Park JS, Melton DA (2013) Betatrophin:a hormone that controls pancreatic beta cell proliferation. Cell 153:747-758.
+
+These figures present the same data but in somewhat different forms.  The original publication (Yi et al 2013) presented the raw data; the follow up (Yi et al 2014) presented the raw data in a dot plot.
+
+<br><br>
+
+# Learning objectives
+
+* Become familiar with an R script
+* Become familiar with RMarkdown documents
+* Load R packages
+* Load data
+* Make a barplot.
+
+<br><br>
+
+#The data
+
+**Data from:**
+Figure 1b, Yi P and Melton DA.  2014.  Perspectives on the Activities of ANGPTL8/Betatrophin.  Cell 159:467-468.
+
+**Data Originally presented:**
+Figure 5b, Yi P, Park JS, Melton DA (2013) Betatrophin:a hormone that controls pancreatic beta cell proliferation. Cell 153:747-758.
+
+
+## Load the data
+
+* Normally we load data into R from a spreadsheet saved as .csv file.  
+* To make things super easy, and b/c the dataset is tiny, we'll load it by hand
+
+
+### Make "vectors" to hold the data
+
+Here is my first chunk:
+
+1+1
+
+```{r}
+
+#Control: "beta-cell proliferation ratio" (Ki67/insulin) from gfp-treated animals
+gfp <- c(0.56,0.32,0.24,0.32,0.56)
+
+#Treatment:"beta-cell proliferation ratio" (Ki67/insulin) from cells treated with betatropin
+betat <- c(0.71,0.79,1.43,2.14,7.70,8.65,8.73)
+
+```
+
+
+
+
+
+
+
+We can queary R about how long each of these "vectors" are using the **length()** command
+```{r}
+length(gfp)
+length(betat)
+```
+
+
+
+### Make "dataframe" to hold the data
+
+**"dataframes"**" are the principal way we work with data in R.
+
+This code is a bit complex for a beginner - don't worry about what its doing.
+```{r}
+
+beta.df <- data.frame(trt = c(rep("gfp",5),
+                              rep("beta.T",7)),
+                      response = c(gfp,betat))
+
+
+```
+
+The data now looks like this
+```{r}
+beta.df
+```
+
+
+Data in R almost alywas is organized in "long" format with each row being a seperate observation, organism, etc.
+
+<br>
+
+
+We can see how big our dataframe is uing the **dim()** command.
+```{r}
+dim(beta.df)
+```
+
+R tells us its 12 rows by 2 columns.  
+
+We can see if R does this right.  We know that our original data has 7 and 5 data points each, and if we can't do math in our head, we can 
+```{r}
+5+7
+```
+
+
+Or, if we can't remember how many datapoint there are
+```{r}
+length(gfp)+length(betat)
+```
+
+
+### Look at a summary of the dataframe
+
+```{r}
+summary(beta.df)
+```
+
+
+<br><br><br>
+
+# Replicating the bar plot
+
+* the bars are means
+* the error bars are standard errors (SE)
+* R has no SE command
+* SE = SD/sqrt(n)
+
+## Replicating the bar plot totally by hand
+
+### Calculate the summary stats
+
+#### The means
+
+* the mean() command
+* NB: no average() command as in Excel
+```{r}
+mean.gfp <- mean(gfp)
+mean.betat <- mean(betat)
+
+```
+
+
+#### The SD
+
+* sd() in R
+* vs. stdev() in Excel
+
+```{r}
+
+sd.gfp <- sd(gfp)
+sd.betat <- sd(betat)
+
+```
+
+#### The Sample size
+
+* use lenth()
+
+```{r}
+n.gfp <- length(gfp)
+n.betat <- length(betat)
+
+```
+
+#### Calculate SE
+
+* SE = SD/sqrt(n)
+
+```{r}
+SE.gfp <- sd.gfp/sqrt(n.gfp)
+
+SE.betat <- sd.betat/sqrt(n.betat)
+```
+
+
+
+
+
+
+### Making bar graph
+
+#### Compile summary stats into dataframe
+
+Don't worry so much about this code - we normally won't do all of this!
+```{r}
+summary.df <- data.frame(trt = c("gfp","betat"),
+                         mean = c(mean.gfp, mean.betat),
+                         SD = c(sd.gfp,sd.betat),
+                         SE = c(SE.gfp,SE.betat))
+```
+
+Take a look at our little dataframe
+
+```{r}
+summary.df
+```
+
+
+
+#### Calcualte top and bottom of error bars
+
+* upper = mean + SE
+* lower = mean - SE
+* We'll apply some basic math using data from our dataframe
+* R will apply mathmatical operations to entire rows of data
+
+
+The upper bar.  It will take both means and add both SEs to give 2 new values.
+```{r}
+summary.df$EB.up <- summary.df$mean + summary.df$SE
+```
+
+The lower bar.
+```{r}
+summary.df$EB.low <- summary.df$mean  - summary.df$SE
+```
+
+
+The new dataframe
+
+```{r}
+summary.df
+```
+
+<br><br>
+
+
+#### Plot barplot
+
+* **barplot()** function
+* Main "arguement" = "height"
+
+
+Plot just the bars
+```{r}
+barplot(height = summary.df$mean)
+```
+
+
+Use the "arguement" "names.arg=" to label x-axis
+```{r}
+barplot(height = summary.df$mean,
+        names.arg = summary.df$trt)
+```
+
+<br><br>
+
+#### barplot() barplot with error bars
+
+R's barplot() function is very basic.  For the sake of demonstrating what R can do I'll add error bars to the plot; however, there are functions that make this much, much easier.
+
+<br>
+
+##### Add error bars to barplot()
+
+Did I mention we won't really ever do this?
+
+```{r}
+
+#Make the plot
+## note that I have to set ylim = ... to accomdate the height of the error bar
+the.plot <- barplot(height = summary.df$mean,
+        names.arg = summary.df$trt,
+        ylim = c(0,6))
+
+#this object cotains the centers of the bars along the x-axis
+the.plot
+
+#Add error bars made with the segemetns() comamnd
+## lwd() makes the bars thick
+segments(x0 = the.plot,      
+         y0 = summary.df$EB.up, 
+         x1=the.plot, 
+         y1=summary.df$EB.low, 
+         lwd = 5)
+
+```
+
+<br>
+
+* This is very similar to the original boxplot, but with one minor change: their bar are black
+* I will set the "col = " arguement to change this to black
+
+```{r}
+
+#Make the plot
+## note that I have to set ylim = ... to accomdate the height of the error bar
+the.plot <- barplot(height = summary.df$mean,
+        names.arg = summary.df$trt,
+        col = 1,
+        ylim = c(0,6))
+
+#this object cotains the centers of the bars along the x-axis
+the.plot
+
+#Add error bars made with the segemetns() comamnd
+## lwd() makes the bars thick
+segments(x0 = the.plot,      
+         y0 = summary.df$EB.up, 
+         x1=the.plot, 
+         y1=summary.df$EB.low, 
+         lwd = 5)
+
+```
+
+
+
+
+
+
+## Replicating the bar plot with help from tapply()
+
+What we just did was pretty labor intensive.  Let's speed it up a bit using a handing function that can apply functions to dataframes, tapply()
+
+### Using tapply()
+
+Here we can get **both** means from our dataframe in one step
+```{r}
+my.means <- tapply(X = beta.df$response,   #the x value
+       INDEX = beta.df$trt,    #the grouping variable
+       FUN = mean)             #the function
+
+my.means
+
+```
+
+Now both SDs
+```{r}
+my.sd <- tapply(X = beta.df$response,   #the x value
+       INDEX = beta.df$trt,    #the grouping variable
+       FUN = sd)             #the function
+
+my.sd
+```
+
+And the sample sizes
+```{r}
+my.n <- tapply(X = beta.df$response,   #the x value
+       INDEX = beta.df$trt,    #the grouping variable
+       FUN = sd)             #the function
+
+my.n
+```
+
+
+Use SD and n to calcualte SE for the error bars
+
+```{r}
+my.SE <- my.sd/sqrt(my.n)
+
+my.SE
+```
+
+
+Put things together into a dataframe
+
+```{r}
+summary.df2 <- data.frame(trt = c("beta.T", "gfp"), my.means,my.SE)
+
+summary.df2
+```
+
+Thing got reversed; this will flip them.  For now we'll ignore why, but it has to do with the topic of "indexing" dataframes.
+```{r}
+summary.df2 <- summary.df2[c(2,1),]
+```
+
+
+### Using barplot2()
+
+* We could now use barplot(), but its clunky
+* barplot() has some improvement, but we need to download it from the gplots package
+
+
+#### Get gplots package
+```{r}
+library(gplots)
+```
+
+<br>
+
+#### Use barplot2
+
+barplot2 still takes a "height" arguement
+```{r}
+barplot2(height = summary.df2$my.means)
+```
+
+
+barplot2() also has an internal error bar builder!
+
+It requries 3 arguements
+
+* plot.ci = T: turns on error bars
+* ci.l: lower limit
+* ci.u: upper limit
+* NB: we'll do the math to calculate the error bar, withing the barplot2() function.
+* THat is, instead of making new "EB.up" and "EB.lo" column, we'll just do summary.df2$my.means-summary.df2$my.SE etc within the barplot2() function itself
+* NOte that barplot2() is smart and can figure out how to set the yaxis to accomodate the errorbar
+
+```{r}
+barplot2(height = summary.df2$my.means, #the means
+         plot.ci = T,                   #turn on errorbars                                   
+         ci.l = summary.df2$my.means-
+                summary.df2$my.SE,      #calcualte lower bar
+         ci.u = summary.df2$my.means+
+                summary.df2$my.SE)      #and the upper bar
+```
+
+Now, just turn it black so it looks like the original
+```{r}
+barplot2(height = summary.df2$my.means, #the means
+         col = 1,
+         plot.ci = T,                   #turn on errorbars                                   
+         ci.l = summary.df2$my.means-
+                summary.df2$my.SE,      #calcualte lower bar
+         ci.u = summary.df2$my.means+
+                summary.df2$my.SE)      #and the upper bar
+```
+
+<br><br>
+
+## Replicating the bar plot with help from summaryBy()
+
+Let's make things even easier
+
+* the doBy package has a summaryBy function that is better than tapply()
+* we can load a package that has a standard error function in it (std.error())
+
+```{r}
+
+#for summaryBy
+library(doBy)
+
+#std.error
+library(plotrix)
+
+```
+
+
+REcall that our original dataframe looked like this, 
+```{r}
+beta.df
+```
+
+
+* summaryBy is great b/c is uses R's standard modeling format of "y ~ x"
+* summaryBY can (usually) apply more than one function
+* we'll tell is "FUN = c(mean, std.error)" to get both means and SEs at the same time
+
+```{r}
+summary.df3 <- summaryBy(response ~ trt,
+          data = beta.df, 
+          FUN = c(mean,
+                  std.error) )
+```
+
+Now take a look at our df
+```{r}
+summary.df3
+```
+
+
+flip it so its in original order
+```{r}
+summary.df3 <- summary.df3[c(2,1),]
+```
+
+
+* Now toss this at barplot2()
+* NOTE: the column names have changed!!!
+```{r}
+barplot2(height = summary.df3$response.mean, #the means
+         col = 1,
+         names.arg = summary.df3$trt,
+         plot.ci = T,                   #turn on errorbars                                   
+         ci.l = summary.df3$response.mean-
+                summary.df3$response.std.error,      #calcualte lower bar
+         ci.u = summary.df3$response.mean+
+                summary.df3$response.std.error)
+```
+
+
+### Adding annotation within a plot
+
+* First, I'm going to put better names on the x-axis.  
+* I'll put the  words "GFP" and "Betatropin" into a **vector** using the c(..) command
+
+```{r}
+#the names
+my.names <- c("GFP", "Betatropin")
+
+```
+
+
+Now plot with  better names and annotations
+```{r}
+
+#The plot
+theplot <- barplot2(height = summary.df3$response.mean, #the means
+         col = 1,
+         names.arg = my.names,
+         xlab = "Treatment",
+         ylab = "Ki67+/insulin %",
+         ylim = c(0,6.25),
+         plot.ci = T,                   #turn on errorbars                                   
+         ci.l = summary.df3$response.mean-
+                summary.df3$response.std.error,      #calcualte lower bar
+         ci.u = summary.df3$response.mean+
+                summary.df3$response.std.error)
+theplot
+
+#adding text
+text(x = theplot[2],y = 5.875,labels = "* *",cex = 2)
+mtext(text = c("n = 7","n = 5"),
+      side = 1,line = 1.95,at = theplot)
+```
+
+Now you to can make a plot that can be published in Cell!
+
+<br><br><br><br>
+
+# T-tests in R
+
+The methods say "All of the p values were calculated by a standard Student's t test with two-tails distribution." and they note that the p-value is p < 0.005 
+
+So let's do a t-test and check
+
+* function t.test()
+* R's defaults are for a 2-sample t-test w/ "Welch's correction" for "un-equal variances"
+* (variances are almsot always unequal, and this is a big issue!)
+
+
+```{r}
+t.test(response ~ trt,
+          data = beta.df)
+```
+
+
+* The p-value is 0.03576.
+* What does this mean? ...
+
+
+Wait - they report their p-value as < 0.005. What's up?  Maybe they didn't use Welch's correction for some reason
+
+* Set "var.equal = T", which means we assume that the variances are the same
+* (This is completely utterly wrong for these data!)
+
+```{r}
+t.test(response ~ trt,
+          data = beta.df,
+       var.equal = T)
+```
+
+Nope, p got bigger!
+
+Maybe they tranformed that data? 
+```{r}
+#log transform
+t.test(log(response) ~ trt,
+          data = beta.df)
+```
+
+P is now 0.002 which is < 0.005.  (WE can check that with R)
+
+```{r}
+0.002 < 0.005
+```
+
+Or like this
+```{r}
+my.p <- t.test(log(response) ~ trt,
+          data = beta.df)
+
+my.p$p.value < 0.005
+```
+
+
+This could account for this.  BUt they didn't say the did a transformation.  THat is frustrating.
+
+
+
+# Assumption of the t-test
+
+* ALL statistical methods are "models"
+* They require imposition of mathematical assumptions onto reality
+* A simplification of reality = a model
+* I don't like "statistical test", I like "statistica model"
+* I don't say it, but I should probably say "t-model" instead of "t-test"
+
+## Mathematical Assumptions of t-test
+
+* **1) Random sampling**: each of the 2 samples are taken randomly from a population OR treatments were applied randomly to the two groups
+* **2) Normally distributed**: within each group data are approximatley normally distributed
+* **3) Homogeneity of variance**: both groups have the same variance/standard deviation
+
+
+### Comments on assumptions
+
+
+* 1) was probably fulfilled by randomly assigned treatments.  However, data collection was not blinded and they do not detail how the collected images, openign the door for major bias issues!
+
+* 2) can be rectified by using transformation (ie log, sqrt)
+* In general t-test (and regression, ANCOVA, ANOVA) area all somewhat "Robust" to the violation of this assumptin, especially when sample sizes get large (check the sample size statement...)
+* Biologists often get really hung up on normality, but often its not a big deal.
+
+* 3) "homogeneity of variance** is addressed by using "Welch's correction"
+* No statistical method is robust to violation of this assumption; it always must corrected or accounted for
+* Failure to address homogeneity of variance is a MAJOR PROBLEM
+
+* There exist many tests to see if these assumptions are violated (ie Levene's test). 
+* I believe that to test for, say, normaily, you have to assume equal variance, and to test for equal variance, you have to assume normality.
+* We will never use any of these tests : )  
+* Its better to plot your raw data and look at the "residauls" (errors) of the model
+
+<br><br><br><br>
+
+# Closer look at the rawdata
+
+## Boxplots
+
+* Plot median and quartiles
+* Boxplots are fabulous, but don't work well for small datasets
+* with small datasets, you can have almost as many plotting elements as datapoints
+
+```{r}
+#sorry, annoying code to make the orders correct
+beta.df$trt <- factor(beta.df$trt, levels = c("gfp","beta.T"))
+
+boxplot(response ~ trt,
+          data = beta.df)
+
+```
+
+
+
+## Boxplots w/ raw datapoints
+
+* This helps a bit but data points all jammed on top of each other
+* Notice anything odd about the beta.T treatment...
+```{r}
+boxplot(response ~ trt,
+          data = beta.df)
+points(response ~ trt,
+          data = beta.df)
+
+```
+
+## Plotting logged data
+
+
+* Its hard to think on a log scale
+* but plotting logged data can sometimes help w/ visualization
+* NB: log() = "ln" = nautral log!
+*     log10() = "log" = base 10 log!
+* Stats usually uses ln
+
+* Transforming can help improve normailty
+* (it also seemd to help get their original p-value...)
+```{r}
+boxplot(log(response) ~ trt,
+          data = beta.df)
+points(log(response) ~ trt,
+          data = beta.df)
+
+```
+
+* Still seems to be outliers..
+* Note: there is no assumption that there are never outliers in your data - outliers are data too!
+
+
+
+
+## Dotplots
+
+* When datasets are small you should almost always plot the raw data.
+* these are often called "dotplots", not to be confused with "Cleveland dotplot"
+* R has a function stripchart() which can make simple plots
+* I just found a cool function called beeswarm() that I really like
+
+We can now make a plot like in Yi et al. 2014
+```{r}
+#install.packages("beeswarm")
+library(beeswarm)
+
+beeswarm(response ~ trt,
+          data = beta.df)
+```
+
+Let's add some stuff from out summary dataframe
+```{r}
+#fix plotting issue...
+summary.df3$trt <- factor(summary.df3$trt,levels = c("gfp","beta.T") )
+
+#dotplot
+beeswarm(response ~ trt,
+          data = beta.df)
+
+#mean
+points(response.mean ~ trt, data = summary.df3, pch = "+", cex = 2)
+
+```
+
+
+Notice anyting?...
+
+
+## Plot barplot next to dotplot
+
+* We need to set it so that 2 plots get put side by side
+* this is done with the command "par(mfrow = c(1,2))"
+* see what happens when you change it to c(1,1) instead of c(1,2)...
+
+```{r}
+#set up for 2 panels side by side
+par(mfrow = c(1,2))
+
+
+#Barplot
+#The plot
+theplot <- barplot2(height = summary.df3$response.mean, #the means
+         col = 1,
+         names.arg = my.names,
+         xlab = "Treatment",
+         ylab = "Ki67+/insulin %",
+         ylim = c(0, 9),
+         plot.ci = T,                   #turn on errorbars                                   
+         ci.l = summary.df3$response.mean-
+                summary.df3$response.std.error,      #calcualte lower bar
+         ci.u = summary.df3$response.mean+
+                summary.df3$response.std.error)
+theplot
+
+#adding text
+text(x = theplot[2],y = 5.875,labels = "* *",cex = 2)
+mtext(text = c("n = 7","n = 5"),
+      side = 1,line = 1.95,at = theplot)
+
+#Dotplot
+#fix plotting issue...
+summary.df3$trt <- factor(summary.df3$trt,levels = c("gfp","beta.T") )
+
+#dotplot
+beeswarm(response ~ trt,
+          data = beta.df, ylim = c(0,9),
+         ylab = "")
+
+#mean
+points(response.mean ~ trt, data = summary.df3, pch = "+", cex = 2)
+
+
+```
+
+
+## What's up with these data
+
+* There appears to be a difference between the treatmetns
+* However, ther are also three HUGE outliers that turn a small difference into a HUGE differnce
+* A barplot is a very bad way to plot these data.  By using a bar plot these author's open themselves up to accusationat that they were trying to hide the real data
+* It is highly questionable whether a t-test is appropriate for these data
+* Other options: non-parametric methods (next week?)
+
+<br><br><br>
+
+
+
+# The 1st replication of the experiment by the authors
+
+
+## Load data from replication
+
+```{r}
+response <-c(0.011904762,8.88E-16,  0.011904762,0.54761904,0.41666666,
+             0.2857143,  0.32142857,0.3809524,0.5119048,0.5714286,0.86904764,1.3214285,1.8214285,1.8214285,0,8.88E-16,0.25,0.5,0.5595238,0.85714287,0.72619045,0.42857143,0.71428573,0.70238096,0.7380952,0.78571427,0.9404762,0.6785714,0.53571427,0.5,0.41666666,0.35714287,0.23809524,0.26190478,1.2380953,1.1666666,1.0476191,1,1.1309524,1.1666666,1.4166666,1.7261904,1.7023809,2.1785715,2.0714285,2.0952382,2.547619,2.4880953,2.5,2.6666667,3.1547618,3.797619)
+
+i.0 <- which(response == 0)
+
+which.min(response[-i.0])
+
+response[i.0] <- response[which.min(response[-i.0])]
+
+trt <-c(rep("GFP",14),rep("betatropin",38))
+
+replication.df <- data.frame(response, trt)
+
+
+replication.df$trt <- factor(replication.df$trt, levels = c("GFP", "betatropin"))
+```
+
+
+## Make beeswarm plot
+
+* Let's make just a single plot
+* reset the goofy par comand to par(mfrow = c(1,1))
+
+```{r}
+
+#set factor levels, grrr..
+replication.df$trt <- factor(replication.df$trt,
+                             levels = c("GFP","betatropin"))
+
+par(mfrow = c(1,1))
+beeswarm(response ~ trt,
+          data = replication.df )
+
+
+```
+
+
+## Add mean to beeswarm
+
+Calcualte means and SEs with summaryBy
+```{r}
+my.means2 <- summaryBy(response ~ trt,
+          data = replication.df, FUN = c(mean,std.error))
+```
+
+
+
+
+```{r}
+
+#Main plot
+beeswarm(response ~ trt,
+          data = replication.df )
+
+
+#Add means
+points(response.mean ~ trt, data = my.means2, pch = "+",cex = 3)
+```
+
+Data are definately skewed...
+
+
+## Compare replication data to original data
+
+
+```{r}
+#set par
+
+par(mfrow = c(1,2))
+
+
+#original data dotplot
+beeswarm(response ~ trt,
+          data = beta.df, ylim = c(0,9),
+         ylab = "")
+
+#original mean
+points(response.mean ~ trt, data = summary.df3, pch = "+", cex = 2)
+
+
+#replciation data
+beeswarm(response ~ trt,
+          data = replication.df )
+
+
+#Add means
+points(response.mean ~ trt, data = my.means2, pch = "+",cex = 3)
+
+
+```
+
+
+We can stack them on top of them usin par(mfrow = c(2,1))
+
+
+## Adjust y axes
+
+* Note that the y axis on the old data is much higher than for the new data
+* Set the y axis to be the same for each one with "ylim = c(0,9)"
+
+```{r}
+#set par
+
+par(mfrow = c(1,2))
+
+
+#original data dotplot
+beeswarm(response ~ trt,
+          data = beta.df, 
+         ylab = "",
+         ylim = c(0,9)) #set ylim
+
+#original mean
+points(response.mean ~ trt, data = summary.df3, pch = "+", cex = 2)
+
+
+#replciation data
+beeswarm(response ~ trt,
+          data = replication.df , 
+         ylim = c(0,9))# set ylim
+
+
+#Add means
+points(response.mean ~ trt, data = my.means2, pch = "+",cex = 3)
+
+
+```
+
+
+
+## Adjust colors
+
+* use col = ... to change the colors
+
+
+```{r}
+#set par
+
+par(mfrow = c(1,2))
+
+
+#original data dotplot
+beeswarm(response ~ trt,
+          data = beta.df, 
+         col = 2,
+         ylab = "",
+         ylim = c(0,9)) #set ylim
+
+#original mean
+points(response.mean ~ trt, data = summary.df3, pch = "+", cex = 2, col = 2)
+
+
+#replciation data
+beeswarm(response ~ trt,
+          data = replication.df , 
+         col = 3,
+         ylim = c(0,9))# set ylim
+
+
+#Add means
+points(response.mean ~ trt, data = my.means2, pch = "+",cex = 3, col = 3)
+
+
+```
+
+
+
+
+## Overlay old and new data
+
+* set par(...) back to c(1,1)
+
+```{r}
+#set par
+
+par(mfrow = c(1,1))
+
+
+#original data dotplot
+beeswarm(response ~ trt,
+          data = beta.df, 
+         ylab = "",
+         ylim = c(0,9),
+         col = 2) #set ylim
+
+#original mean
+points(response.mean ~ trt, data = summary.df3, pch = "+", cex = 2, col = 2)
+
+
+#replciation data
+beeswarm(response ~ trt,
+          data = replication.df , 
+         ylim = c(0,9), add = TRUE,
+         col = 3)# set ylim
+
+
+#Add means
+points(response.mean ~ trt, data = my.means2, pch = 17,cex = 2, col = 3)
+
+
+```
+
+
+
+## On your own: Is there a treatment effect in the replication?
+
+* Use data in replication.df and the t.test function to see if there is a significant difference.
+* Run with and without a log transformation 
+* Plot the logged data
+
+```{r}
+#Type your code here...
+
+
+
+
+```
+
+
+Answers below.
+
+
+<br><br>
+<br><br>
+<br><br>
+<br><br>
+<br><br>
+<br><br>
+<br><br>
+<br><br>
+<br><br>
+<br><br>
+
+
+## On your own: Is there a treatment effect in the replication?
+
+* Use data in replication.df and the t.test function to see if there is a significant difference.
+* Run with and without a log transformation 
+* Plot the logged data
+
+### t test
+```{r}
+t.test(response ~ trt,
+          data = replication.df)
+```
+
+
+### logged t-test
+```{r}
+t.test(log(response) ~ trt,
+          data = replication.df)
+```
+
+
+
+### Plot logged data
+```{r}
+#Replication data
+beeswarm(log(response) ~ trt,
+          data = replication.df , 
+         #ylim = c(0,9), 
+         add = F,
+         col = 3)# set ylim
+
+
+#Add means
+points(log(response.mean) ~ trt, data = my.means2, pch = 17,cex = 2, col = 3)
+```
+
+
+
+<br><br><br><br>
+
+# Multi-lab replication
+
+Because of the controversy around the original paper the original authors collaborated with other researchers to conduct a blinded, multi-lab replication of the original study.
+
+Cox, Yi, Melton, Kushner et al. 2016.  Resolving Discrepant Findings on ANGPTL8 in ??-Cell Proliferation: A Collaborative Approach to Resolving the Betatrophin Controversy.  PLoSONE.
+
+## Load data from lab 3
+
+Load data from csv
+
+* NB: must set wd first!
+```{r}
+lab3.df <- read.csv(file = "Yi_et_al_PLOS_betatropin_data_subset_lab_3_CSV.csv")
+```
+
+
+Look at data
+
+```{r}
+lab3.df
+```
+
+## Plot data
+
+```{r}
+beeswarm(percent.Ki67 ~ trt, data= lab3.df)
+```
+
+## Do t-test
+
+The report a p-value of 0.0003 in Excel.
+
+```{r}
+t.test(percent.Ki67 ~ trt, data= lab3.df)
+```
+
+
+## Do transformed t-test
+
+Still significant 
+```{r}
+t.test(log(percent.Ki67) ~ trt, data= lab3.df)
+```
+
