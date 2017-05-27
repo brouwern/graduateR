@@ -1,0 +1,54 @@
+---
+title: "AIC example"
+author: "brouwern@gmail.com"
+date: "April 13, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#
+
+
+```{r}
+library(labstats)
+
+head(VPA)
+
+lm0 <- lm(activity ~ 1, data = VPA)
+lm1 <- lm(activity ~ group, data = VPA)
+
+glm1 <- glm(activity ~ group, data = VPA,)
+
+AIC(lm0)
+AIC(lm1)
+
+
+library(bbmle)
+
+AICtab(lm0,lm1,base = TRUE, logLik = TRUE)
+
+
+
+
+summary(lm1)
+anova(lm1)
+sum(resid(lm1)^2)
+deviance(lm1)
+
+deviance(lm1)
+
+RSS <- sum(resid(lm1)^2)
+n <- dim(VPA)[1]
+k <- length(coef(m1))
+n*log(RSS)+(2*(k+1))
+
+
+-2*logLik(lm1)+(2*(k+1))
+AIC(lm1)
+
+
+```
+
